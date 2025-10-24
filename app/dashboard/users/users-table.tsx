@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -23,14 +25,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { User } from "@/lib/dataTypes";
 import { userSchema, UserSchemaType } from "@/schema/userSchema";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { ColumnDef } from "@tanstack/react-table";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-const UsersTable = () => {
-  const [open, setOpen] = useState(false);
+const users = {
+  data: [
+    {
+      id: 1,
+      name: "John Doe",
+      username: "john",
+      email: "john@example.com",
+      role: "user",
+    },
+    {
+      id: 2,
+      name: "Jane Doe",
+      username: "jane",
+      email: "jane@example.com",
+      role: "user",
+    },
+  ],
+  meta: {
+    links: [],
+    current_page: 1,
+    last_page: 1,
+    total: 2,
+  },
+};
 
+const UsersTable = () => {
+  const [openUserForm, setOpenUserForm] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+
+  // User form
   const form = useForm({
     resolver: yupResolver(userSchema),
     defaultValues: {
@@ -42,17 +76,57 @@ const UsersTable = () => {
     },
   });
 
+  // Handle Form Submit
   const onSubmit = (data: UserSchemaType) => {
     console.log(data);
   };
 
+  // Handle Page Change
+  const handlePageChange = (page: string) => {
+    params.set("page", page);
+    router.push(`?${params}`, { scroll: false });
+  };
+
+  // Table Columns
+  const columns: ColumnDef<User>[] = [
+    {
+      header: "Name",
+      accessorKey: "name",
+    },
+    {
+      header: "Username",
+      accessorKey: "username",
+    },
+    {
+      header: "Email",
+      accessorKey: "email",
+    },
+    {
+      header: "Role",
+      accessorKey: "role",
+    },
+    {
+      header: "Action",
+    },
+  ];
+
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-medium">Users</h1>
-        <Button onClick={() => setOpen(true)}>Add User</Button>
+        <Button onClick={() => setOpenUserForm(true)}>Add User</Button>
       </div>
-      <Dialog open={open} onOpenChange={setOpen}>
+
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex items-center justify-between gap-4 pb-6">
+          <Input type="search" placeholder="Search..." className="max-w-xs" />
+        </div>
+        <DataTable data={users.data} columns={columns} />
+        <Pagination meta={users.meta} onPageChange={handlePageChange} />
+      </div>
+
+      {/* User creation dialog */}
+      <Dialog open={openUserForm} onOpenChange={setOpenUserForm}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add User</DialogTitle>
@@ -133,7 +207,7 @@ const UsersTable = () => {
               </FieldGroup>
               <div className="flex items-center justify-end gap-3">
                 <Button
-                  onClick={() => setOpen(false)}
+                  onClick={() => setOpenUserForm(false)}
                   type="button"
                   variant="secondary"
                 >
