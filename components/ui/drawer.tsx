@@ -10,8 +10,8 @@ const sheetVariants = cva("fixed flex flex-col bg-background outline-none", {
     side: {
       top: "inset-x-0 top-0 max-h-[calc(100%-6rem)] border-b",
       bottom: "inset-x-0 bottom-0 max-h-[calc(100%-6rem)] border-t",
-      left: "inset-y-0 left-0 h-full w-72 border-r",
-      right: "inset-y-0 right-0 h-full w-72 border-l",
+      left: "inset-y-0 left-0 h-full w-full max-w-72 border-r",
+      right: "inset-y-0 right-0 h-full w-full max-w-72 border-l",
     },
   },
   defaultVariants: {
@@ -58,7 +58,7 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex h-16 shrink-0 flex-wrap items-center justify-between border-b px-6",
+        "flex min-h-16 shrink-0 flex-wrap items-center justify-between border-b px-6",
         className,
       )}
       {...props}

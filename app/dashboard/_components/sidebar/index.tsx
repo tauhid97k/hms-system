@@ -43,7 +43,7 @@ const Sidebar = () => {
             </div>
             <DrawerClose
               className={cn(
-                buttonVariants({ variant: "secondary", size: "icon" }),
+                buttonVariants({ variant: "ghost", size: "icon-lg" }),
               )}
             >
               <LuX />
