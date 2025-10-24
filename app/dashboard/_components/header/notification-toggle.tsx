@@ -19,10 +19,10 @@ const NotificationToggle = () => {
 
       {/* Notification Badge */}
       {unreadCount > 0 && (
-        <span className="absolute top-1.5 right-2.5">
-          <span className="relative flex size-3">
+        <span className="absolute top-2 right-3">
+          <span className="relative flex size-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex size-3 rounded-full bg-primary"></span>
+            <span className="relative inline-flex size-2.5 rounded-full bg-primary"></span>
           </span>
         </span>
       )}

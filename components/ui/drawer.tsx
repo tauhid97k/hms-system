@@ -5,7 +5,7 @@ import type * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 
-const sheetVariants = cva("fixed flex flex-col bg-background outline-none", {
+const sheetVariants = cva("fixed flex flex-col bg-card outline-none", {
   variants: {
     side: {
       top: "inset-x-0 top-0 max-h-[calc(100%-6rem)] border-b",

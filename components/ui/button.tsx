@@ -1,13 +1,13 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
-import { cn } from "@/lib/utils";
 import Spinner from "./spinner";
 
 const buttonVariants = cva(
-  "transition-[color,box-shadow] inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-70 [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-70 [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]",
   {
     variants: {
       variant: {
@@ -24,9 +24,9 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:pr-1",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:pr-1",
-        lg: "h-10 rounded-md px-6 has-[>svg]:pr-1",
+        default: "h-9 px-3.5 py-2",
+        sm: "h-8 gap-1.5 px-3",
+        lg: "h-10 px-6",
         icon: "size-9",
         "icon-sm": "size-8",
         "icon-lg": "size-10",
@@ -60,7 +60,14 @@ function Button({
       disabled={isLoading}
       {...props}
     >
-      {isLoading ? <Spinner className="stroke-white" /> : children}
+      {isLoading ? (
+        <>
+          <Spinner className="stroke-white" />
+          {children}
+        </>
+      ) : (
+        children
+      )}
     </Comp>
   );
 }
