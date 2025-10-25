@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useState } from "react";
 
 // Table Props Interface
 interface DataTableProps<TData, TValue> {
@@ -17,10 +18,19 @@ export const DataTable = <TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) => {
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState({});
+
   // Init table
   const table = useReactTable({
     data: data || [],
     columns,
+    state: {
+      rowSelection,
+    },
+    manualPagination: true,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -46,10 +56,14 @@ export const DataTable = <TData, TValue>({
             </tr>
           ))}
         </thead>
-        <tbody>
+        <tbody className="divide-y">
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-b transition-colors">
+              <tr
+                key={row.id}
+                className="transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted/50"
+                data-state={row.getIsSelected() && "selected"}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td
                     className="max-w-[230px] truncate px-6 py-3.5 text-sm"
@@ -64,9 +78,9 @@ export const DataTable = <TData, TValue>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="h-28 text-center text-lg text-muted-foreground"
+                className="h-28 pt-6 text-center text-lg text-muted-foreground"
               >
-                No data found
+                No data available
               </td>
             </tr>
           )}

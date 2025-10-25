@@ -22,7 +22,7 @@ export const Pagination = <T,>({ meta, onPageChange }: PaginationProps<T>) => {
           ? new URL(link.url).searchParams.get("page")
           : null;
 
-        // Render buttons with onClick handlers
+        // Render buttons
         return link.url && pageNumber ? (
           <button
             key={index}
