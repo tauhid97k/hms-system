@@ -224,7 +224,7 @@ function FieldError({
       role="alert"
       data-slot="field-error"
       className={cn(
-        "text-sm font-normal text-destructive first-letter:capitalize",
+        "text-sm font-normal text-destructive first-letter:capitalize dark:text-destructive-foreground",
         className,
       )}
       {...props}
