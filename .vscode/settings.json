@@ -1,4 +1,11 @@
 {
   "css.lint.unknownAtRules": "ignore",
-  "cSpell.words": ["bprogress", "Stylesheet", "usehooks", "vaul"]
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+  "cSpell.words": [
+    "bprogress",
+    "cmdk",
+    "Stylesheet",
+    "usehooks",
+    "vaul"
+  ]
 }
