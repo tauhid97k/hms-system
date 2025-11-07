@@ -1,6 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTable } from "@/components/ui/data-table";
 import {
@@ -10,6 +21,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown";
 import {
   Field,
   FieldError,
@@ -33,6 +50,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { LuEllipsisVertical, LuEye, LuPencil, LuTrash } from "react-icons/lu";
 
 const users = {
   data: [
@@ -41,14 +59,14 @@ const users = {
       name: "John Doe",
       username: "john",
       email: "john@example.com",
-      role: "user",
+      role: "User",
     },
     {
       id: 2,
       name: "Jane Doe",
       username: "jane",
       email: "jane@example.com",
-      role: "user",
+      role: "User",
     },
   ],
   meta: {
@@ -61,6 +79,7 @@ const users = {
 
 const UsersTable = () => {
   const [openUserForm, setOpenUserForm] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams);
@@ -125,9 +144,38 @@ const UsersTable = () => {
     {
       header: "Role",
       accessorKey: "role",
+      cell: ({ row }) => <Badge variant="secondary">{row.original.role}</Badge>,
     },
     {
       header: "Action",
+      cell: () => {
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-sm">
+                <LuEllipsisVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>
+                <LuEye />
+                <span>View</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <LuPencil />
+                <span>Edit</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setOpenDeleteDialog(true)}
+              >
+                <LuTrash />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
     },
   ];
 
@@ -230,7 +278,7 @@ const UsersTable = () => {
                 <Button
                   onClick={() => setOpenUserForm(false)}
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                 >
                   Cancel
                 </Button>
@@ -240,6 +288,28 @@ const UsersTable = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete dialog */}
+      <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this user?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOpenDeleteDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

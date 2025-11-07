@@ -1,7 +1,5 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { LuMonitor, LuMoon, LuSun } from "react-icons/lu";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { LuMonitor, LuMoon, LuSun } from "react-icons/lu";
 
 export function ThemeSwitcher() {
   const { setTheme } = useTheme();
