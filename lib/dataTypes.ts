@@ -1,29 +1,21 @@
-// Pagination Link Interface
-interface PaginationLink {
-  url: string | null;
-  label: string;
-  active: boolean;
-}
-
-// Meta Data Interface
-interface Meta {
-  links: PaginationLink[];
-  current_page: number;
-  last_page: number;
+// Meta Data
+export type MetaData = {
+  page: number;
+  limit: number;
   total: number;
-}
-
-// Paginated Data and Meta Type
-export type PaginatedData<TData> = {
-  data: TData[];
-  meta: Meta;
 };
 
-// User
-export type User = {
-  id: number;
-  name: string;
-  username: string;
-  email: string;
-  role: string;
+// Paginated Data
+export type PaginatedData<TData> = {
+  data: TData[];
+  meta: MetaData;
+};
+
+// Category
+export type Category = {
+  id: string;
+  title: string;
+  description: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 };

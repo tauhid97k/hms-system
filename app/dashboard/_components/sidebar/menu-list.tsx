@@ -1,6 +1,21 @@
-import { LuLayoutGrid, LuSettings, LuUserRound } from "react-icons/lu";
+import { LuLayoutGrid, LuList, LuSettings } from "react-icons/lu";
 
-export const menuList = [
+export interface SubMenuItem {
+  id: number;
+  title: string;
+  url: string;
+}
+
+export interface MenuItem {
+  id: number;
+  title: string;
+  icon: React.ReactElement;
+  url?: string;
+  baseUrl?: string;
+  submenu?: SubMenuItem[];
+}
+
+export const menuList: MenuItem[] = [
   {
     id: 1,
     title: "Dashboard",
@@ -9,21 +24,9 @@ export const menuList = [
   },
   {
     id: 2,
-    title: "Users & Access",
-    icon: <LuUserRound className="icon" />,
-    baseUrl: "/dashboard/users",
-    submenu: [
-      {
-        id: 1,
-        title: "Users",
-        url: "/dashboard/users",
-      },
-      {
-        id: 2,
-        title: "Roles & Permissions",
-        url: "/dashboard/users/roles",
-      },
-    ],
+    title: "Categories",
+    icon: <LuList className="icon" />,
+    url: "/dashboard/categories",
   },
   {
     id: 3,

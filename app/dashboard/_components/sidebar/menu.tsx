@@ -7,9 +7,14 @@ const SidebarMenu = () => {
   return (
     <nav className="grow space-y-1.5 overflow-y-auto p-6">
       {menuList.map((menu) => {
-        if (menu.submenu) {
+        if (menu.submenu && menu.baseUrl) {
           return (
-            <MenuCollapsible key={menu.id} {...menu}>
+            <MenuCollapsible
+              key={menu.id}
+              icon={menu.icon}
+              title={menu.title}
+              baseUrl={menu.baseUrl}
+            >
               {menu.submenu.map((submenu) => (
                 <MenuCollapsibleItem key={submenu.id} {...submenu} />
               ))}
@@ -17,7 +22,18 @@ const SidebarMenu = () => {
           );
         }
 
-        return <MenuItem key={menu.id} {...menu} />;
+        if (menu.url) {
+          return (
+            <MenuItem
+              key={menu.id}
+              icon={menu.icon}
+              title={menu.title}
+              url={menu.url}
+            />
+          );
+        }
+
+        return null;
       })}
     </nav>
   );

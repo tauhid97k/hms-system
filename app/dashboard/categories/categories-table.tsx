@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTable } from "@/components/ui/data-table";
@@ -36,69 +35,59 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { User } from "@/lib/dataTypes";
-import { userSchema, UserSchemaType } from "@/schema/userSchema";
+import { Textarea } from "@/components/ui/textarea";
+import { Category, PaginatedData } from "@/lib/dataTypes";
+import { formatDateTime } from "@/lib/date-format";
+import { client } from "@/lib/orpc";
+import { categorySchema, CategorySchemaType } from "@/schema/categorySchema";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { LuEllipsisVertical, LuEye, LuPencil, LuTrash } from "react-icons/lu";
+import { toast } from "sonner";
 
-const users = {
-  data: [
-    {
-      id: 1,
-      name: "John Doe",
-      username: "john",
-      email: "john@example.com",
-      role: "User",
-    },
-    {
-      id: 2,
-      name: "Jane Doe",
-      username: "jane",
-      email: "jane@example.com",
-      role: "User",
-    },
-  ],
-  meta: {
-    links: [],
-    current_page: 1,
-    last_page: 1,
-    total: 2,
-  },
-};
-
-const UsersTable = () => {
-  const [openUserForm, setOpenUserForm] = useState(false);
+const CategoriesTable = ({
+  categories,
+}: {
+  categories: PaginatedData<Category>;
+}) => {
+  const [openCategoryForm, setOpenCategoryForm] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams);
 
-  // User form
-  const form = useForm({
-    resolver: yupResolver(userSchema),
+  // Category creation form
+  const createForm = useForm({
+    resolver: yupResolver(categorySchema),
     defaultValues: {
-      name: "",
-      username: "",
-      email: "",
-      password: "",
-      role: "",
+      title: "",
+      description: "",
     },
   });
 
   // Handle Form Submit
-  const onSubmit = (data: UserSchemaType) => {
-    console.log(data);
+  const onSubmit = async (data: CategorySchemaType) => {
+    await client.categories.create(data);
+    setOpenCategoryForm(false);
+    router.refresh();
+    createForm.reset();
+  };
+
+  // Handle Delete
+  const handleDelete = async (id: string) => {
+    if (!id) {
+      toast.error("Category ID is required");
+      return;
+    }
+
+    await client.categories.delete(id);
+    setOpenDeleteDialog(false);
+    toast.success("Category deleted");
+    router.refresh();
   };
 
   // Handle Page Change
@@ -107,8 +96,14 @@ const UsersTable = () => {
     router.push(`?${params}`, { scroll: false });
   };
 
+  // Handle Limit Change
+  const handleLimitChange = (limit: string) => {
+    params.set("limit", limit);
+    router.push(`?${params}`, { scroll: false });
+  };
+
   // Table Columns
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDef<Category>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -130,29 +125,26 @@ const UsersTable = () => {
       ),
     },
     {
-      header: "Name",
-      accessorKey: "name",
+      header: "Title",
+      accessorKey: "title",
     },
     {
-      header: "Username",
-      accessorKey: "username",
+      header: "Created At",
+      accessorKey: "createdAt",
+      cell: ({ row }) => formatDateTime(row.original.createdAt),
     },
     {
-      header: "Email",
-      accessorKey: "email",
-    },
-    {
-      header: "Role",
-      accessorKey: "role",
-      cell: ({ row }) => <Badge variant="secondary">{row.original.role}</Badge>,
+      header: "Updated At",
+      accessorKey: "updatedAt",
+      cell: ({ row }) => formatDateTime(row.original.updatedAt),
     },
     {
       header: "Action",
-      cell: () => {
+      cell: ({ row }) => {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon-sm">
+              <Button variant="outline" size="icon">
                 <LuEllipsisVertical />
               </Button>
             </DropdownMenuTrigger>
@@ -167,7 +159,10 @@ const UsersTable = () => {
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => setOpenDeleteDialog(true)}
+                onClick={() => {
+                  setSelectedId(row.original.id);
+                  setOpenDeleteDialog(true);
+                }}
               >
                 <LuTrash />
                 <span>Delete</span>
@@ -182,93 +177,52 @@ const UsersTable = () => {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium">Users</h1>
-        <Button onClick={() => setOpenUserForm(true)}>Add User</Button>
+        <h1 className="text-2xl font-medium">Categories</h1>
+        <Button onClick={() => setOpenCategoryForm(true)}>Add Category</Button>
       </div>
 
       <div className="rounded-xl border bg-card p-6">
         <div className="flex items-center justify-between gap-4 pb-6">
           <Input type="search" placeholder="Search..." className="max-w-xs" />
         </div>
-        <DataTable data={users.data} columns={columns} />
-        <Pagination meta={users.meta} onPageChange={handlePageChange} />
+        <DataTable data={categories.data} columns={columns} />
+        <Pagination
+          meta={categories.meta}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
       </div>
 
-      {/* User creation dialog */}
-      <Dialog open={openUserForm} onOpenChange={setOpenUserForm}>
+      {/* Category creation dialog */}
+      <Dialog open={openCategoryForm} onOpenChange={setOpenCategoryForm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add User</DialogTitle>
+            <DialogTitle>Add Category</DialogTitle>
             <DialogDescription>
-              Fill the form to add a new user.
+              Fill the form to add a new category
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off">
-            <FieldSet>
+          <form onSubmit={createForm.handleSubmit(onSubmit)} autoComplete="off">
+            <FieldSet disabled={createForm.formState.isSubmitting}>
               <FieldGroup>
                 <Controller
-                  name="name"
-                  control={form.control}
+                  name="title"
+                  control={createForm.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="name">Full Name</FieldLabel>
-                      <Input {...field} id="name" placeholder="John Doe" />
+                      <FieldLabel htmlFor="title">Title</FieldLabel>
+                      <Input {...field} id="title" />
                       <FieldError errors={[fieldState.error]} />
                     </Field>
                   )}
                 />
                 <Controller
-                  name="username"
-                  control={form.control}
+                  name="description"
+                  control={createForm.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="username">Username</FieldLabel>
-                      <Input {...field} id="username" placeholder="john" />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="email"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="email">Email</FieldLabel>
-                      <Input
-                        {...field}
-                        id="email"
-                        placeholder="john@example.com"
-                      />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="password"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="password">Password</FieldLabel>
-                      <Input {...field} id="password" placeholder="password" />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="role"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="role">Role</FieldLabel>
-                      <Select {...field} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="user">User</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FieldLabel htmlFor="description">Description</FieldLabel>
+                      <Textarea {...field} id="description" />
                       <FieldError errors={[fieldState.error]} />
                     </Field>
                   )}
@@ -276,13 +230,18 @@ const UsersTable = () => {
               </FieldGroup>
               <div className="flex items-center justify-end gap-3">
                 <Button
-                  onClick={() => setOpenUserForm(false)}
+                  onClick={() => setOpenCategoryForm(false)}
                   type="button"
                   variant="outline"
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Add User</Button>
+                <Button
+                  type="submit"
+                  isLoading={createForm.formState.isSubmitting}
+                >
+                  Add Category
+                </Button>
               </div>
             </FieldSet>
           </form>
@@ -293,9 +252,9 @@ const UsersTable = () => {
       <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Delete Category</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this user?
+              Are you sure you want to delete this category?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -303,6 +262,8 @@ const UsersTable = () => {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
+              type="submit"
+              onClick={() => handleDelete(selectedId)}
               className={buttonVariants({ variant: "destructive" })}
             >
               Delete
@@ -314,4 +275,4 @@ const UsersTable = () => {
   );
 };
 
-export default UsersTable;
+export default CategoriesTable;

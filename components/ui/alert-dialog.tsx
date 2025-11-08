@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import Spinner from "./spinner";
 
 function AlertDialog({
   ...props
@@ -123,13 +124,27 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  isLoading,
+  children,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> & {
+  isLoading?: boolean;
+}) {
   return (
     <AlertDialogPrimitive.Action
       className={cn(buttonVariants(), className)}
+      disabled={isLoading}
       {...props}
-    />
+    >
+      {isLoading ? (
+        <>
+          <Spinner className="stroke-white" />
+          {children}
+        </>
+      ) : (
+        children
+      )}
+    </AlertDialogPrimitive.Action>
   );
 }
 
