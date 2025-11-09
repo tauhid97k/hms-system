@@ -17,15 +17,19 @@ import {
 } from "@/components/ui/field";
 import { FormError } from "@/components/ui/form-error";
 import { Input } from "@/components/ui/input";
+import { signIn } from "@/lib/auth-client";
 import { SignInSchemaType, signInSchema } from "@/schema/authSchema";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 const SignInForm = () => {
-  const [pendingAuth] = useState<boolean>(false);
-  const [formError] = useState<string>("");
+  const router = useRouter();
+  const [pendingAuth, setPendingAuth] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string>("");
 
   const form = useForm({
     resolver: yupResolver(signInSchema),
@@ -37,7 +41,30 @@ const SignInForm = () => {
 
   // On Submit
   const onSubmit = async (values: SignInSchemaType) => {
-    console.log(values);
+    setPendingAuth(true);
+    setFormError("");
+
+    try {
+      const result = await signIn.email({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (result.error) {
+        setFormError(result.error.message || "Invalid email or password");
+        toast.error(result.error.message || "Invalid email or password");
+      } else {
+        toast.success("Signed in successfully!");
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (error: any) {
+      const errorMsg = error.message || "An error occurred during sign in";
+      setFormError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setPendingAuth(false);
+    }
   };
 
   return (

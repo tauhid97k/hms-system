@@ -76,16 +76,17 @@ enum NotificationType {
 // ============= USERS & AUTH =============
 
 model users {
-  id           String   @id @default(ulid())
-  name         String
-  email        String   @unique
-  password     String
-  phone        String?
-  avatar       String?
-  departmentId String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(ulid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  password      String?
+  phone         String?
+  avatar        String?
+  departmentId  String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   department       departments?    @relation(fields: [departmentId], references: [id])
   userRoles        user_roles[]
@@ -98,6 +99,7 @@ model users {
   documents        documents[]
   notifications    notifications[]
   sessions         sessions[]
+  accounts         accounts[]      @relation("UserAccounts")
   receivedPayments payments[]
 
   @@index([email])
@@ -110,13 +112,50 @@ model sessions {
   userId    String
   token     String   @unique
   expiresAt DateTime
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
   @@index([expiresAt])
+}
+
+model accounts {
+  id                      String    @id @default(ulid())
+  userId                  String
+  accountId               String
+  providerId              String
+  accessToken             String?
+  refreshToken            String?
+  accessTokenExpiresAt    DateTime?
+  refreshTokenExpiresAt   DateTime?
+  scope                   String?
+  idToken                 String?
+  password                String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  user users @relation("UserAccounts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@index([userId])
+  @@index([providerId])
+}
+
+model verification {
+  id         String   @id @default(ulid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+  @@index([identifier])
 }
 
 // ============= ROLES & PERMISSIONS =============
@@ -566,9 +605,9 @@ model notifications {
   @@index([createdAt])
 }
 
-// ============= ACCOUNTS =============
+// ============= LEDGER ACCOUNTS =============
 
-model accounts {
+model ledger_accounts {
   id          String   @id @default(ulid())
   name        String
   accountType String // "cash", "bank", "revenue", "expense" - flexible
@@ -594,8 +633,8 @@ model transactions {
   description   String?
   createdAt     DateTime @default(now())
 
-  account accounts  @relation(fields: [accountId], references: [id])
-  payment payments? @relation(fields: [paymentId], references: [id])
+  account ledger_accounts @relation(fields: [accountId], references: [id])
+  payment payments?       @relation(fields: [paymentId], references: [id])
 
   @@index([accountId, createdAt]) // Account statement
   @@index([createdAt]) // Daily transactions

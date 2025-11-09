@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:www.better-auth.com)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
