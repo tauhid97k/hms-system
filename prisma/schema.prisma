@@ -8,6 +8,636 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============= ENUMS (Only for fixed types) =============
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum VisitType {
+  NEW
+  FOLLOWUP
+}
+
+enum VisitStatus {
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+}
+
+enum BillStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum TestStatus {
+  ORDERED
+  BILLED
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+  RELEASED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_BANKING
+  ONLINE
+}
+
+enum NotificationType {
+  APPOINTMENT
+  TEST_READY
+  PAYMENT
+  QUEUE_UPDATE
+  SYSTEM
+}
+
+// ============= USERS & AUTH =============
+
+model users {
+  id           String   @id @default(ulid())
+  name         String
+  email        String   @unique
+  password     String
+  phone        String?
+  avatar       String?
+  departmentId String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department       departments?    @relation(fields: [departmentId], references: [id])
+  userRoles        user_roles[]
+  doctorProfile    doctors?
+  visits           visits[]        @relation("AssignedVisits")
+  prescriptions    prescriptions[]
+  testResults      test_results[]  @relation("Technician")
+  reviewedTests    test_results[]  @relation("Reviewer")
+  orderedTests     test_orders[]   @relation("OrderedBy")
+  documents        documents[]
+  notifications    notifications[]
+  sessions         sessions[]
+  receivedPayments payments[]
+
+  @@index([email])
+  @@index([departmentId])
+  @@index([isActive])
+}
+
+model sessions {
+  id        String   @id @default(ulid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ============= ROLES & PERMISSIONS =============
+
+model roles {
+  id          String   @id @default(ulid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) // true for SUPER_ADMIN, ADMIN, DOCTOR, etc.
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles       user_roles[]
+  rolePermissions role_permissions[]
+
+  @@index([slug])
+  @@index([isSystem])
+  @@index([isActive])
+}
+
+model permissions {
+  id          String   @id @default(ulid())
+  name        String   @unique
+  slug        String   @unique
+  module      String // "patients", "visits", "billing", "labs", etc.
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions role_permissions[]
+
+  @@index([slug])
+  @@index([module])
+}
+
+model role_permissions {
+  id           String @id @default(ulid())
+  roleId       String
+  permissionId String
+
+  role       roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model user_roles {
+  id     String @id @default(ulid())
+  userId String
+  roleId String
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// ============= DEPARTMENTS =============
+
+model departments {
+  id          String   @id @default(ulid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users   users[]
+  doctors doctors[]
+  labs    labs[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============= DOCTORS =============
+
+model doctors {
+  id              String   @id @default(ulid())
+  userId          String   @unique
+  departmentId    String
+  specialization  String?
+  qualification   String?
+  consultationFee Float
+  hospitalFee     Float    @default(0)
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user       users       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department departments @relation(fields: [departmentId], references: [id])
+  visits     visits[]
+
+  @@index([userId])
+  @@index([departmentId])
+  @@index([isAvailable])
+}
+
+// ============= PATIENTS =============
+
+model patients {
+  id         String      @id @default(ulid())
+  patientId  String      @unique
+  name       String
+  age        Int
+  phone      String
+  gender     Gender?
+  address    String?
+  bloodGroup BloodGroup?
+  email      String?
+  notes      String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  visits    visits[]
+  documents documents[]
+  bills     bills[]
+
+  @@index([patientId])
+  @@index([phone])
+  @@index([name])
+  @@index([isActive])
+  @@index([createdAt]) // For recent patients
+}
+
+// ============= VISITS & APPOINTMENTS =============
+
+model visits {
+  id            String      @id @default(ulid())
+  patientId     String
+  doctorId      String
+  assignedBy    String
+  visitType     VisitType
+  reason        String?
+  serialNumber  Int
+  queuePosition Int
+  status        VisitStatus @default(WAITING)
+  entryTime     DateTime?
+  exitTime      DateTime?
+  visitDate     DateTime    @default(now())
+  visitMonth    String // YYYY-MM for partitioning/archiving
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  patient        patients        @relation(fields: [patientId], references: [id])
+  doctor         doctors         @relation(fields: [doctorId], references: [id])
+  assignedByUser users           @relation("AssignedVisits", fields: [assignedBy], references: [id])
+  bills          bills[]
+  prescriptions  prescriptions[]
+  testOrders     test_orders[]
+
+  @@index([doctorId, visitDate, queuePosition]) // Queue management
+  @@index([patientId, visitDate]) // Patient history
+  @@index([status, visitDate]) // Today's waiting/in-consultation
+  @@index([visitDate]) // Daily operations
+  @@index([visitMonth]) // Monthly partitioning
+  @@index([createdAt]) // Recent visits
+}
+
+// ============= BILLING (Polymorphic-like Design) =============
+
+model bills {
+  id           String     @id @default(ulid())
+  billNumber   String     @unique
+  patientId    String
+  visitId      String?
+  billableType String? // "visit", "test", "medicine", "other" - flexible for future
+  billableId   String? // ID of the billable entity
+  totalAmount  Float
+  paidAmount   Float      @default(0)
+  dueAmount    Float
+  discount     Float      @default(0)
+  status       BillStatus @default(PENDING)
+  billingDate  DateTime   @default(now())
+  dueDate      DateTime?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  patient   patients     @relation(fields: [patientId], references: [id])
+  visit     visits?      @relation(fields: [visitId], references: [id])
+  billItems bill_items[]
+  payments  payments[]
+
+  @@index([billNumber])
+  @@index([patientId, status]) // Patient's pending bills
+  @@index([visitId])
+  @@index([status, billingDate]) // Pending bills by date
+  @@index([billableType, billableId]) // Polymorphic lookup
+  @@index([billingDate]) // Daily billing reports
+  @@index([createdAt]) // Recent bills
+}
+
+model bill_items {
+  id           String  @id @default(ulid())
+  billId       String
+  itemableType String // "consultation", "test", "medicine", "service" - polymorphic
+  itemableId   String // ID of the item (test_order.id, medicine.id, etc.)
+  itemName     String
+  quantity     Int     @default(1)
+  unitPrice    Float
+  discount     Float   @default(0)
+  total        Float
+  notes        String?
+
+  bill bills @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+  @@index([itemableType, itemableId]) // Polymorphic lookup
+}
+
+model payments {
+  id            String        @id @default(ulid())
+  billId        String
+  amount        Float
+  paymentMethod PaymentMethod
+  transactionId String?
+  receivedBy    String?
+  status        String        @default("success")
+  paymentDate   DateTime      @default(now())
+  notes         String?
+  metadata      Json?
+
+  bill           bills         @relation(fields: [billId], references: [id])
+  receivedByUser users?        @relation(fields: [receivedBy], references: [id])
+  transaction    transactions?
+
+  @@index([billId])
+  @@index([paymentMethod])
+  @@index([status])
+  @@index([paymentDate]) // Daily payment reports
+  @@index([receivedBy])
+}
+
+// ============= MEDICINES & PRESCRIPTIONS =============
+
+model medicines {
+  id           String   @id @default(ulid())
+  name         String
+  genericName  String?
+  type         String?
+  manufacturer String?
+  strength     String?
+  price        Float?
+  stock        Int?
+  minStock     Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  prescriptionItems prescription_items[]
+
+  @@index([name])
+  @@index([isActive])
+  @@index([stock]) // Low stock alerts
+}
+
+model medicine_instructions {
+  id          String  @id @default(ulid())
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  prescriptionItems prescription_items[]
+
+  @@index([isActive])
+}
+
+model prescriptions {
+  id           String    @id @default(ulid())
+  visitId      String
+  doctorId     String
+  notes        String?
+  followUpDate DateTime?
+  createdAt    DateTime  @default(now())
+
+  visit  visits               @relation(fields: [visitId], references: [id])
+  doctor users                @relation(fields: [doctorId], references: [id])
+  items  prescription_items[]
+
+  @@index([visitId])
+  @@index([doctorId])
+  @@index([createdAt])
+}
+
+model prescription_items {
+  id             String  @id @default(ulid())
+  prescriptionId String
+  medicineId     String
+  instructionId  String?
+  duration       String?
+  notes          String?
+
+  prescription prescriptions          @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicine     medicines              @relation(fields: [medicineId], references: [id])
+  instruction  medicine_instructions? @relation(fields: [instructionId], references: [id])
+
+  @@index([prescriptionId])
+  @@index([medicineId])
+}
+
+// ============= LABS & TESTS =============
+
+model labs {
+  id           String   @id @default(ulid())
+  name         String   @unique
+  code         String   @unique
+  departmentId String?
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department departments? @relation(fields: [departmentId], references: [id])
+  testTypes  test_types[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([departmentId])
+}
+
+model test_types {
+  id          String   @id @default(ulid())
+  name        String
+  labId       String
+  code        String   @unique
+  price       Float
+  templateId  String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lab        labs            @relation(fields: [labId], references: [id])
+  template   test_templates? @relation(fields: [templateId], references: [id])
+  testOrders test_orders[]
+
+  @@index([code])
+  @@index([labId])
+  @@index([isActive])
+}
+
+model test_templates {
+  id          String   @id @default(ulid())
+  name        String   @unique
+  description String?
+  fields      Json // Form builder JSON schema
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  testTypes test_types[]
+
+  @@index([isActive])
+}
+
+model test_orders {
+  id         String     @id @default(ulid())
+  visitId    String
+  testTypeId String
+  orderedBy  String
+  status     TestStatus @default(ORDERED)
+  priority   String     @default("normal") // "normal", "urgent", "stat"
+  orderedAt  DateTime   @default(now())
+  billId     String?
+
+  visit         visits        @relation(fields: [visitId], references: [id])
+  testType      test_types    @relation(fields: [testTypeId], references: [id])
+  orderedByUser users         @relation("OrderedBy", fields: [orderedBy], references: [id])
+  result        test_results?
+
+  @@index([visitId])
+  @@index([testTypeId, status]) // Lab queue
+  @@index([status, orderedAt]) // Workflow status
+  @@index([orderedAt]) // Recent orders
+  @@index([orderedBy])
+  @@index([priority]) // Urgent tests first
+}
+
+model test_results {
+  id           String     @id @default(ulid())
+  testOrderId  String     @unique
+  technicianId String
+  resultData   Json // Dynamic form data
+  status       TestStatus @default(IN_PROGRESS)
+  reviewedBy   String?
+  reviewNotes  String?
+  completedAt  DateTime?
+  releasedAt   DateTime?
+  deliveredAt  DateTime?
+  deliveredTo  String?
+
+  testOrder  test_orders @relation(fields: [testOrderId], references: [id])
+  technician users       @relation("Technician", fields: [technicianId], references: [id])
+  reviewer   users?      @relation("Reviewer", fields: [reviewedBy], references: [id])
+
+  @@index([status, completedAt]) // Pending review
+  @@index([technicianId])
+  @@index([reviewedBy])
+}
+
+// ============= DOCUMENTS =============
+
+model documents {
+  id         String   @id @default(ulid())
+  patientId  String
+  visitId    String?
+  fileType   String // "xray", "scan", "report", "prescription"
+  fileName   String
+  fileUrl    String
+  fileSize   Int?
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  patient        patients @relation(fields: [patientId], references: [id])
+  uploadedByUser users    @relation(fields: [uploadedBy], references: [id])
+
+  @@index([patientId])
+  @@index([visitId])
+  @@index([fileType])
+  @@index([uploadedAt])
+}
+
+// ============= NOTIFICATIONS =============
+
+model notifications {
+  id        String           @id @default(ulid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt]) // Unread notifications
+  @@index([createdAt])
+}
+
+// ============= ACCOUNTS =============
+
+model accounts {
+  id          String   @id @default(ulid())
+  name        String
+  accountType String // "cash", "bank", "revenue", "expense" - flexible
+  balance     Float    @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions transactions[]
+
+  @@index([accountType])
+  @@index([isActive])
+}
+
+model transactions {
+  id            String   @id @default(ulid())
+  accountId     String
+  paymentId     String?  @unique
+  amount        Float
+  type          String // "CREDIT", "DEBIT"
+  referenceType String? // "bill", "expense", "transfer" - flexible
+  referenceId   String?
+  description   String?
+  createdAt     DateTime @default(now())
+
+  account accounts  @relation(fields: [accountId], references: [id])
+  payment payments? @relation(fields: [paymentId], references: [id])
+
+  @@index([accountId, createdAt]) // Account statement
+  @@index([createdAt]) // Daily transactions
+  @@index([referenceType, referenceId]) // Lookup by reference
+}
+
+// ============= SETTINGS =============
+
+model settings {
+  id        String   @id @default(ulid())
+  key       String   @unique
+  value     String // Store JSON or encrypted values
+  type      String   @default("string") // "string", "number", "boolean", "json"
+  isPublic  Boolean  @default(false) // Can be accessed by frontend
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([isPublic])
+}
+
+// ============= AUDIT LOG (For compliance & debugging) =============
+
+model audit_logs {
+  id        String   @id @default(ulid())
+  userId    String?
+  action    String // "create", "update", "delete", "login", etc.
+  entity    String // "patient", "visit", "bill", etc.
+  entityId  String?
+  changes   Json? // Before/after data
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@index([createdAt]) // Archiving old logs
+  @@index([action])
+}
+
+// ============= LEGACY (Keep for now) =============
+
 model categories {
   id          String   @id @default(ulid())
   title       String   @unique
