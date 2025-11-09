@@ -73,6 +73,56 @@ enum NotificationType {
   SYSTEM
 }
 
+enum VisitEventType {
+  // Visit Registration
+  VISIT_REGISTERED
+  VISIT_ASSIGNED
+
+  // Queue Management
+  QUEUE_JOINED
+  QUEUE_CALLED
+  QUEUE_SKIPPED
+
+  // Consultation Flow
+  ENTERED_ROOM
+  EXITED_ROOM
+  CONSULTATION_COMPLETED
+
+  // Clinical Actions
+  PRESCRIPTION_GIVEN
+  TESTS_ORDERED
+  REFERRAL_GIVEN
+
+  // Billing Events
+  CONSULTATION_BILLED
+  TESTS_BILLED
+  PAYMENT_RECEIVED
+  PAYMENT_PARTIAL
+  PAYMENT_REFUNDED
+
+  // Lab/Test Workflow
+  TEST_SAMPLE_COLLECTED
+  TEST_IN_PROGRESS
+  TEST_COMPLETED
+  TEST_REVIEWED
+  TEST_APPROVED
+  REPORT_GENERATED
+  REPORT_DELIVERED
+
+  // Document Events
+  DOCUMENT_UPLOADED
+  DOCUMENT_SHARED
+
+  // Visit Completion
+  VISIT_COMPLETED
+  VISIT_CANCELLED
+  VISIT_RESCHEDULED
+
+  // Follow-up
+  FOLLOWUP_SCHEDULED
+  FOLLOWUP_REMINDER_SENT
+}
+
 // ============= USERS & AUTH =============
 
 model users {
@@ -101,6 +151,7 @@ model users {
   sessions         sessions[]
   accounts         accounts[]      @relation("UserAccounts")
   receivedPayments payments[]
+  visitEvents      visit_events[]  @relation("PerformedBy")
 
   @@index([email])
   @@index([departmentId])
@@ -314,6 +365,7 @@ model visits {
   bills          bills[]
   prescriptions  prescriptions[]
   testOrders     test_orders[]
+  visitEvents    visit_events[]
 
   @@index([doctorId, visitDate, queuePosition]) // Queue management
   @@index([patientId, visitDate]) // Patient history
@@ -321,6 +373,27 @@ model visits {
   @@index([visitDate]) // Daily operations
   @@index([visitMonth]) // Monthly partitioning
   @@index([createdAt]) // Recent visits
+}
+
+// ============= VISIT EVENTS (Event Sourcing Pattern) =============
+
+model visit_events {
+  id            String         @id @default(ulid())
+  visitId       String
+  eventType     VisitEventType
+  description   String?
+  metadata      Json? // Flexible data: billId, testId, fileUrl, duration, etc.
+  performedBy   String?
+  performedAt   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+
+  visit         visits  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  performedByUser users? @relation("PerformedBy", fields: [performedBy], references: [id])
+
+  @@index([visitId, performedAt]) // Timeline reconstruction
+  @@index([eventType]) // Event type filtering
+  @@index([performedAt]) // Chronological queries
+  @@index([visitId, eventType]) // Specific event lookup
 }
 
 // ============= BILLING (Polymorphic-like Design) =============

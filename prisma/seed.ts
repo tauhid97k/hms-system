@@ -446,9 +446,11 @@ async function main() {
 
   // 7. Create Patients
   console.log("🏥 Creating patients...");
+  const currentYear = new Date().getFullYear().toString().slice(-2);
+
   await prisma.patients.create({
     data: {
-      patientId: "PAT-0001",
+      patientId: `PID${currentYear}-000001`,
       name: "Alice Williams",
       age: 45,
       phone: "+1234560001",
@@ -463,7 +465,7 @@ async function main() {
 
   await prisma.patients.create({
     data: {
-      patientId: "PAT-0002",
+      patientId: `PID${currentYear}-000002`,
       name: "Bob Martinez",
       age: 32,
       phone: "+1234560002",
@@ -478,7 +480,7 @@ async function main() {
 
   await prisma.patients.create({
     data: {
-      patientId: "PAT-0003",
+      patientId: `PID${currentYear}-000003`,
       name: "Carol Davis",
       age: 8,
       phone: "+1234560003",
@@ -493,7 +495,7 @@ async function main() {
 
   await prisma.patients.create({
     data: {
-      patientId: "PAT-0004",
+      patientId: `PID${currentYear}-000004`,
       name: "David Chen",
       age: 58,
       phone: "+1234560004",
@@ -508,7 +510,7 @@ async function main() {
 
   await prisma.patients.create({
     data: {
-      patientId: "PAT-0005",
+      patientId: `PID${currentYear}-000005`,
       name: "Eva Thompson",
       age: 29,
       phone: "+1234560005",

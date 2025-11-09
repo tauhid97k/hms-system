@@ -7,6 +7,14 @@ import {
   deleteDepartment,
   toggleDepartmentStatus,
 } from "./departments"
+import {
+  getPatients,
+  getPatient,
+  createPatient,
+  updatePatient,
+  deletePatient,
+} from "./patients"
+import { getVisit } from "./visits"
 
 export const router = {
   categories: {
@@ -21,5 +29,15 @@ export const router = {
     update: updateDepartment,
     delete: deleteDepartment,
     toggleStatus: toggleDepartmentStatus,
+  },
+  patients: {
+    getAll: getPatients,
+    getOne: getPatient,
+    create: createPatient,
+    update: updatePatient,
+    delete: deletePatient,
+  },
+  visits: {
+    getOne: getVisit,
   },
 }
