@@ -11,7 +11,7 @@ export default async function BillsPage({
   const params = await searchParams;
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 10;
-  const status = params.status as string | undefined;
+  const status = params.status as "PENDING" | "PARTIAL" | "PAID" | "REFUNDED" | "CANCELLED" | "DUE" | undefined;
   const patientId = params.patientId as string | undefined;
   const search = params.search as string | undefined;
 

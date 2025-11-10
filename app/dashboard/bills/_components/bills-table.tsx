@@ -145,7 +145,7 @@ export function BillsTable({ initialData }: BillsTableProps) {
         return (
           <div className="text-center">
             {itemCount > 0 ? (
-              <Badge variant="outline">{itemCount}</Badge>
+              <Badge variant="secondary">{itemCount}</Badge>
             ) : (
               <span className="text-muted-foreground">0</span>
             )}

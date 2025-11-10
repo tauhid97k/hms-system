@@ -15,6 +15,7 @@ import {
   getQueueForDoctor,
 } from "@/lib/queue-emitter";
 import { format } from "date-fns";
+import { VisitType, VisitStatus, VisitEventType } from "prisma/generated/client";
 
 // Get all visits with pagination and filters
 export const getVisits = os
@@ -219,11 +220,11 @@ export const createVisit = os
           patientId: input.patientId,
           doctorId: input.doctorId,
           assignedBy: input.assignedBy,
-          visitType: input.visitType as any,
+          visitType: input.visitType as VisitType,
           chiefComplaint: input.chiefComplaint,
           serialNumber,
           queuePosition,
-          status: "WAITING",
+          status: VisitStatus.WAITING,
           visitDate: new Date(),
           visitMonth,
         },
@@ -269,19 +270,19 @@ export const createVisit = os
         data: [
           {
             visitId: visit.id,
-            eventType: "VISIT_REGISTERED",
+            eventType: VisitEventType.VISIT_REGISTERED,
             performedBy: input.assignedBy,
             description: "Visit registered",
           },
           {
             visitId: visit.id,
-            eventType: "QUEUE_JOINED",
+            eventType: VisitEventType.QUEUE_JOINED,
             performedBy: input.assignedBy,
             description: `Joined queue at position ${queuePosition}`,
           },
           {
             visitId: visit.id,
-            eventType: "CONSULTATION_BILLED",
+            eventType: VisitEventType.CONSULTATION_BILLED,
             performedBy: input.assignedBy,
             description: `Billed ${totalFee}`,
             metadata: {
@@ -315,17 +316,17 @@ export const updateVisitStatus = os
     const visit = await prisma.visits.update({
       where: { id: input.id },
       data: {
-        status: input.status as any,
+        status: input.status as VisitStatus,
         ...(input.status === "IN_CONSULTATION" && { entryTime: new Date() }),
         ...(input.status === "COMPLETED" && { exitTime: new Date() }),
       },
     });
 
     // Map status to event type
-    const eventTypeMap: Record<string, string> = {
-      IN_CONSULTATION: "ENTERED_ROOM",
-      COMPLETED: "CONSULTATION_COMPLETED",
-      CANCELLED: "VISIT_CANCELLED",
+    const eventTypeMap: Record<string, VisitEventType> = {
+      IN_CONSULTATION: VisitEventType.ENTERED_ROOM,
+      COMPLETED: VisitEventType.CONSULTATION_COMPLETED,
+      CANCELLED: VisitEventType.VISIT_CANCELLED,
     };
 
     const eventType = eventTypeMap[input.status];
@@ -335,7 +336,7 @@ export const updateVisitStatus = os
       await prisma.visit_events.create({
         data: {
           visitId: input.id,
-          eventType: eventType as any,
+          eventType: eventType,
           performedBy: input.performedBy,
           description: `Status changed to ${input.status}`,
         },
@@ -378,7 +379,7 @@ export const callNextPatient = os
     const updated = await prisma.visits.update({
       where: { id: nextVisit.id },
       data: {
-        status: "IN_CONSULTATION",
+        status: VisitStatus.IN_CONSULTATION,
         entryTime: new Date(),
       },
     });
@@ -387,7 +388,7 @@ export const callNextPatient = os
     await prisma.visit_events.create({
       data: {
         visitId: updated.id,
-        eventType: "QUEUE_CALLED",
+        eventType: VisitEventType.QUEUE_CALLED,
         performedBy: input.performedBy,
         description: "Patient called from queue",
       },
@@ -417,7 +418,7 @@ export const updateVisit = os
           chiefComplaint: data.chiefComplaint,
         }),
         ...(data.diagnosis !== undefined && { diagnosis: data.diagnosis }),
-        ...(data.status && { status: data.status as any }),
+        ...(data.status && { status: data.status as VisitStatus }),
       },
     });
 
