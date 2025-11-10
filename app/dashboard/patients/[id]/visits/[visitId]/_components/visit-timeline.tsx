@@ -9,12 +9,12 @@ import {
   LuCalendar,
   LuClock,
   LuFileText,
-  LuFlask,
+  LuFlaskRound,
   LuPill,
   LuUser,
   LuDollarSign,
-  LuCheckCircle2,
-  LuAlertCircle,
+  LuCircleCheck,
+  LuCircleAlert,
   LuDownload,
 } from "react-icons/lu";
 
@@ -51,11 +51,11 @@ const iconMap: Record<string, any> = {
   clock: LuClock,
   activity: LuActivity,
   pill: LuPill,
-  flask: LuFlask,
+  flask: LuFlaskRound,
   dollar: LuDollarSign,
   file: LuFileText,
-  check: LuCheckCircle2,
-  alert: LuAlertCircle,
+  check: LuCircleCheck,
+  alert: LuCircleAlert,
 };
 
 // Color mapping
@@ -73,7 +73,7 @@ export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
   if (journey.length === 0) {
     return (
       <div className="rounded-xl border bg-card p-12 text-center">
-        <LuAlertCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+        <LuCircleAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="mb-2 text-lg font-medium">No Journey Data</h3>
         <p className="text-sm text-muted-foreground">
           This visit doesn't have any recorded events yet. Events will appear here as
@@ -193,7 +193,7 @@ export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
         {visit.labTests && visit.labTests.length > 0 && (
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
-              <LuFlask className="h-5 w-5 text-orange-500" />
+              <LuFlaskRound className="h-5 w-5 text-orange-500" />
               <h3 className="font-medium">Lab Tests</h3>
             </div>
             <div className="space-y-2">

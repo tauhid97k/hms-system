@@ -133,28 +133,19 @@ model users {
   password      String?
   phone         String?
   avatar        String?
-  departmentId  String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  department       departments?    @relation(fields: [departmentId], references: [id])
+  // Relations
   userRoles        user_roles[]
-  doctorProfile    doctors?
-  visits           visits[]        @relation("AssignedVisits")
-  prescriptions    prescriptions[]
-  testResults      test_results[]  @relation("Technician")
-  reviewedTests    test_results[]  @relation("Reviewer")
-  orderedTests     test_orders[]   @relation("OrderedBy")
-  documents        documents[]
-  notifications    notifications[]
+  employeeProfile  employees?
   sessions         sessions[]
   accounts         accounts[]      @relation("UserAccounts")
-  receivedPayments payments[]
-  visitEvents      visit_events[]  @relation("PerformedBy")
+  documents        documents[]
+  notifications    notifications[]
 
   @@index([email])
-  @@index([departmentId])
   @@index([isActive])
 }
 
@@ -281,35 +272,97 @@ model departments {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users   users[]
-  doctors doctors[]
-  labs    labs[]
+  employeeDepartments employee_departments[]
+  labs                labs[]
 
   @@index([code])
   @@index([isActive])
 }
 
-// ============= DOCTORS =============
+// ============= SPECIALIZATIONS =============
 
-model doctors {
-  id              String   @id @default(ulid())
-  userId          String   @unique
-  departmentId    String
-  specialization  String?
-  qualification   String?
-  consultationFee Float
-  hospitalFee     Float    @default(0)
+model specializations {
+  id          String   @id @default(ulid())
+  name        String   @unique
+  code        String   @unique
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employeeSpecializations employee_specializations[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============= EMPLOYEES (Doctors, Nurses, Staff, etc.) =============
+
+model employees {
+  id            String   @id @default(ulid())
+  userId        String   @unique
+  bio           String?  @db.Text
+  qualification String?  @db.Text
+  experiences   Json? // Array of {company, designation, startDate, endDate, description}
+  certificates  Json? // Array of certificate objects
+  documents     Json? // File uploads metadata
+
+  // Doctor/Medical Staff specific
+  consultationFee Float?
+  hospitalFee     Float?   @default(0)
   isAvailable     Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
-  user       users       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department departments @relation(fields: [departmentId], references: [id])
-  visits     visits[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user                    users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeDepartments     employee_departments[]
+  employeeSpecializations employee_specializations[]
+  doctorVisits            visits[]                  @relation("DoctorVisits")
+  assignedVisits          visits[]                  @relation("AssignedVisits")
+  prescriptions           prescriptions[]
+  testResults             test_results[]            @relation("Technician")
+  reviewedTests           test_results[]            @relation("Reviewer")
+  orderedTests            test_orders[]             @relation("OrderedBy")
+  receivedPayments        payments[]
+  visitEvents             visit_events[]            @relation("PerformedBy")
 
   @@index([userId])
-  @@index([departmentId])
   @@index([isAvailable])
+}
+
+// ============= JUNCTION TABLES =============
+
+// Many-to-many: Employees <-> Departments
+model employee_departments {
+  id           String   @id @default(ulid())
+  employeeId   String
+  departmentId String
+  isPrimary    Boolean  @default(false) // Mark one department as primary
+  createdAt    DateTime @default(now())
+
+  employee   employees   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department departments @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, departmentId])
+  @@index([employeeId])
+  @@index([departmentId])
+}
+
+// Many-to-many: Employees <-> Specializations
+model employee_specializations {
+  id               String   @id @default(ulid())
+  employeeId       String
+  specializationId String
+  createdAt        DateTime @default(now())
+
+  employee       employees       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  specialization specializations @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, specializationId])
+  @@index([employeeId])
+  @@index([specializationId])
 }
 
 // ============= PATIENTS =============
@@ -343,29 +396,30 @@ model patients {
 // ============= VISITS & APPOINTMENTS =============
 
 model visits {
-  id            String      @id @default(ulid())
-  patientId     String
-  doctorId      String
-  assignedBy    String
-  visitType     VisitType
-  reason        String?
-  serialNumber  Int
-  queuePosition Int
-  status        VisitStatus @default(WAITING)
-  entryTime     DateTime?
-  exitTime      DateTime?
-  visitDate     DateTime    @default(now())
-  visitMonth    String // YYYY-MM for partitioning/archiving
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id             String      @id @default(ulid())
+  patientId      String
+  doctorId       String // References employees.id
+  assignedBy     String // References employees.id
+  visitType      VisitType
+  chiefComplaint String?     @db.Text
+  diagnosis      String?     @db.Text
+  serialNumber   Int
+  queuePosition  Int
+  status         VisitStatus @default(WAITING)
+  entryTime      DateTime?
+  exitTime       DateTime?
+  visitDate      DateTime    @default(now())
+  visitMonth     String // YYYY-MM for partitioning/archiving
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  patient        patients        @relation(fields: [patientId], references: [id])
-  doctor         doctors         @relation(fields: [doctorId], references: [id])
-  assignedByUser users           @relation("AssignedVisits", fields: [assignedBy], references: [id])
-  bills          bills[]
-  prescriptions  prescriptions[]
-  testOrders     test_orders[]
-  visitEvents    visit_events[]
+  patient          patients        @relation(fields: [patientId], references: [id])
+  doctor           employees       @relation("DoctorVisits", fields: [doctorId], references: [id])
+  assignedByEmployee employees     @relation("AssignedVisits", fields: [assignedBy], references: [id])
+  bills            bills[]
+  prescriptions    prescriptions[]
+  testOrders       test_orders[]
+  visitEvents      visit_events[]
 
   @@index([doctorId, visitDate, queuePosition]) // Queue management
   @@index([patientId, visitDate]) // Patient history
@@ -383,12 +437,12 @@ model visit_events {
   eventType     VisitEventType
   description   String?
   metadata      Json? // Flexible data: billId, testId, fileUrl, duration, etc.
-  performedBy   String?
+  performedBy   String? // References employees.id
   performedAt   DateTime       @default(now())
   createdAt     DateTime       @default(now())
 
-  visit         visits  @relation(fields: [visitId], references: [id], onDelete: Cascade)
-  performedByUser users? @relation("PerformedBy", fields: [performedBy], references: [id])
+  visit             visits     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  performedByEmployee employees? @relation("PerformedBy", fields: [performedBy], references: [id])
 
   @@index([visitId, performedAt]) // Timeline reconstruction
   @@index([eventType]) // Event type filtering
@@ -454,15 +508,15 @@ model payments {
   amount        Float
   paymentMethod PaymentMethod
   transactionId String?
-  receivedBy    String?
+  receivedBy    String? // References employees.id
   status        String        @default("success")
   paymentDate   DateTime      @default(now())
   notes         String?
   metadata      Json?
 
-  bill           bills         @relation(fields: [billId], references: [id])
-  receivedByUser users?        @relation(fields: [receivedBy], references: [id])
-  transaction    transactions?
+  bill               bills         @relation(fields: [billId], references: [id])
+  receivedByEmployee employees?    @relation(fields: [receivedBy], references: [id])
+  transaction        transactions?
 
   @@index([billId])
   @@index([paymentMethod])
@@ -508,13 +562,13 @@ model medicine_instructions {
 model prescriptions {
   id           String    @id @default(ulid())
   visitId      String
-  doctorId     String
+  doctorId     String // References employees.id
   notes        String?
   followUpDate DateTime?
   createdAt    DateTime  @default(now())
 
   visit  visits               @relation(fields: [visitId], references: [id])
-  doctor users                @relation(fields: [doctorId], references: [id])
+  doctor employees            @relation(fields: [doctorId], references: [id])
   items  prescription_items[]
 
   @@index([visitId])
@@ -597,16 +651,16 @@ model test_orders {
   id         String     @id @default(ulid())
   visitId    String
   testTypeId String
-  orderedBy  String
+  orderedBy  String // References employees.id
   status     TestStatus @default(ORDERED)
   priority   String     @default("normal") // "normal", "urgent", "stat"
   orderedAt  DateTime   @default(now())
   billId     String?
 
-  visit         visits        @relation(fields: [visitId], references: [id])
-  testType      test_types    @relation(fields: [testTypeId], references: [id])
-  orderedByUser users         @relation("OrderedBy", fields: [orderedBy], references: [id])
-  result        test_results?
+  visit           visits        @relation(fields: [visitId], references: [id])
+  testType        test_types    @relation(fields: [testTypeId], references: [id])
+  orderedByEmployee employees   @relation("OrderedBy", fields: [orderedBy], references: [id])
+  result          test_results?
 
   @@index([visitId])
   @@index([testTypeId, status]) // Lab queue
@@ -619,10 +673,10 @@ model test_orders {
 model test_results {
   id           String     @id @default(ulid())
   testOrderId  String     @unique
-  technicianId String
+  technicianId String // References employees.id
   resultData   Json // Dynamic form data
   status       TestStatus @default(IN_PROGRESS)
-  reviewedBy   String?
+  reviewedBy   String? // References employees.id
   reviewNotes  String?
   completedAt  DateTime?
   releasedAt   DateTime?
@@ -630,8 +684,8 @@ model test_results {
   deliveredTo  String?
 
   testOrder  test_orders @relation(fields: [testOrderId], references: [id])
-  technician users       @relation("Technician", fields: [technicianId], references: [id])
-  reviewer   users?      @relation("Reviewer", fields: [reviewedBy], references: [id])
+  technician employees   @relation("Technician", fields: [technicianId], references: [id])
+  reviewer   employees?  @relation("Reviewer", fields: [reviewedBy], references: [id])
 
   @@index([status, completedAt]) // Pending review
   @@index([technicianId])

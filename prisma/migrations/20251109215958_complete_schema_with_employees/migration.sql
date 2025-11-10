@@ -22,15 +22,18 @@ CREATE TYPE "PaymentMethod" AS ENUM ('CASH', 'CARD', 'MOBILE_BANKING', 'ONLINE')
 -- CreateEnum
 CREATE TYPE "NotificationType" AS ENUM ('APPOINTMENT', 'TEST_READY', 'PAYMENT', 'QUEUE_UPDATE', 'SYSTEM');
 
+-- CreateEnum
+CREATE TYPE "VisitEventType" AS ENUM ('VISIT_REGISTERED', 'VISIT_ASSIGNED', 'QUEUE_JOINED', 'QUEUE_CALLED', 'QUEUE_SKIPPED', 'ENTERED_ROOM', 'EXITED_ROOM', 'CONSULTATION_COMPLETED', 'PRESCRIPTION_GIVEN', 'TESTS_ORDERED', 'REFERRAL_GIVEN', 'CONSULTATION_BILLED', 'TESTS_BILLED', 'PAYMENT_RECEIVED', 'PAYMENT_PARTIAL', 'PAYMENT_REFUNDED', 'TEST_SAMPLE_COLLECTED', 'TEST_IN_PROGRESS', 'TEST_COMPLETED', 'TEST_REVIEWED', 'TEST_APPROVED', 'REPORT_GENERATED', 'REPORT_DELIVERED', 'DOCUMENT_UPLOADED', 'DOCUMENT_SHARED', 'VISIT_COMPLETED', 'VISIT_CANCELLED', 'VISIT_RESCHEDULED', 'FOLLOWUP_SCHEDULED', 'FOLLOWUP_REMINDER_SENT');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    "password" TEXT,
     "phone" TEXT,
     "avatar" TEXT,
-    "departmentId" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -44,9 +47,43 @@ CREATE TABLE "sessions" (
     "userId" TEXT NOT NULL,
     "token" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "accounts" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "accessTokenExpiresAt" TIMESTAMP(3),
+    "refreshTokenExpiresAt" TIMESTAMP(3),
+    "scope" TEXT,
+    "idToken" TEXT,
+    "password" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "accounts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "verification" (
+    "id" TEXT NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -108,19 +145,55 @@ CREATE TABLE "departments" (
 );
 
 -- CreateTable
-CREATE TABLE "doctors" (
+CREATE TABLE "specializations" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "specializations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "employees" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "departmentId" TEXT NOT NULL,
-    "specialization" TEXT,
+    "bio" TEXT,
     "qualification" TEXT,
-    "consultationFee" DOUBLE PRECISION NOT NULL,
-    "hospitalFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "experiences" JSONB,
+    "certificates" JSONB,
+    "documents" JSONB,
+    "consultationFee" DOUBLE PRECISION,
+    "hospitalFee" DOUBLE PRECISION DEFAULT 0,
     "isAvailable" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "doctors_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "employees_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "employee_departments" (
+    "id" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "departmentId" TEXT NOT NULL,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "employee_departments_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "employee_specializations" (
+    "id" TEXT NOT NULL,
+    "employeeId" TEXT NOT NULL,
+    "specializationId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "employee_specializations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -149,7 +222,8 @@ CREATE TABLE "visits" (
     "doctorId" TEXT NOT NULL,
     "assignedBy" TEXT NOT NULL,
     "visitType" "VisitType" NOT NULL,
-    "reason" TEXT,
+    "chiefComplaint" TEXT,
+    "diagnosis" TEXT,
     "serialNumber" INTEGER NOT NULL,
     "queuePosition" INTEGER NOT NULL,
     "status" "VisitStatus" NOT NULL DEFAULT 'WAITING',
@@ -161,6 +235,20 @@ CREATE TABLE "visits" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "visits_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "visit_events" (
+    "id" TEXT NOT NULL,
+    "visitId" TEXT NOT NULL,
+    "eventType" "VisitEventType" NOT NULL,
+    "description" TEXT,
+    "metadata" JSONB,
+    "performedBy" TEXT,
+    "performedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "visit_events_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -373,7 +461,7 @@ CREATE TABLE "notifications" (
 );
 
 -- CreateTable
-CREATE TABLE "accounts" (
+CREATE TABLE "ledger_accounts" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "accountType" TEXT NOT NULL,
@@ -382,7 +470,7 @@ CREATE TABLE "accounts" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "accounts_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ledger_accounts_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -446,9 +534,6 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 CREATE INDEX "users_email_idx" ON "users"("email");
 
 -- CreateIndex
-CREATE INDEX "users_departmentId_idx" ON "users"("departmentId");
-
--- CreateIndex
 CREATE INDEX "users_isActive_idx" ON "users"("isActive");
 
 -- CreateIndex
@@ -462,6 +547,21 @@ CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
 
 -- CreateIndex
 CREATE INDEX "sessions_expiresAt_idx" ON "sessions"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "accounts_userId_idx" ON "accounts"("userId");
+
+-- CreateIndex
+CREATE INDEX "accounts_providerId_idx" ON "accounts"("providerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "accounts_userId_providerId_key" ON "accounts"("userId", "providerId");
+
+-- CreateIndex
+CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "verification_identifier_value_key" ON "verification"("identifier", "value");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
@@ -521,16 +621,43 @@ CREATE INDEX "departments_code_idx" ON "departments"("code");
 CREATE INDEX "departments_isActive_idx" ON "departments"("isActive");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "doctors_userId_key" ON "doctors"("userId");
+CREATE UNIQUE INDEX "specializations_name_key" ON "specializations"("name");
 
 -- CreateIndex
-CREATE INDEX "doctors_userId_idx" ON "doctors"("userId");
+CREATE UNIQUE INDEX "specializations_code_key" ON "specializations"("code");
 
 -- CreateIndex
-CREATE INDEX "doctors_departmentId_idx" ON "doctors"("departmentId");
+CREATE INDEX "specializations_code_idx" ON "specializations"("code");
 
 -- CreateIndex
-CREATE INDEX "doctors_isAvailable_idx" ON "doctors"("isAvailable");
+CREATE INDEX "specializations_isActive_idx" ON "specializations"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "employees_userId_key" ON "employees"("userId");
+
+-- CreateIndex
+CREATE INDEX "employees_userId_idx" ON "employees"("userId");
+
+-- CreateIndex
+CREATE INDEX "employees_isAvailable_idx" ON "employees"("isAvailable");
+
+-- CreateIndex
+CREATE INDEX "employee_departments_employeeId_idx" ON "employee_departments"("employeeId");
+
+-- CreateIndex
+CREATE INDEX "employee_departments_departmentId_idx" ON "employee_departments"("departmentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "employee_departments_employeeId_departmentId_key" ON "employee_departments"("employeeId", "departmentId");
+
+-- CreateIndex
+CREATE INDEX "employee_specializations_employeeId_idx" ON "employee_specializations"("employeeId");
+
+-- CreateIndex
+CREATE INDEX "employee_specializations_specializationId_idx" ON "employee_specializations"("specializationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "employee_specializations_employeeId_specializationId_key" ON "employee_specializations"("employeeId", "specializationId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "patients_patientId_key" ON "patients"("patientId");
@@ -567,6 +694,18 @@ CREATE INDEX "visits_visitMonth_idx" ON "visits"("visitMonth");
 
 -- CreateIndex
 CREATE INDEX "visits_createdAt_idx" ON "visits"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "visit_events_visitId_performedAt_idx" ON "visit_events"("visitId", "performedAt");
+
+-- CreateIndex
+CREATE INDEX "visit_events_eventType_idx" ON "visit_events"("eventType");
+
+-- CreateIndex
+CREATE INDEX "visit_events_performedAt_idx" ON "visit_events"("performedAt");
+
+-- CreateIndex
+CREATE INDEX "visit_events_visitId_eventType_idx" ON "visit_events"("visitId", "eventType");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "bills_billNumber_key" ON "bills"("billNumber");
@@ -725,10 +864,10 @@ CREATE INDEX "notifications_userId_isRead_createdAt_idx" ON "notifications"("use
 CREATE INDEX "notifications_createdAt_idx" ON "notifications"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "accounts_accountType_idx" ON "accounts"("accountType");
+CREATE INDEX "ledger_accounts_accountType_idx" ON "ledger_accounts"("accountType");
 
 -- CreateIndex
-CREATE INDEX "accounts_isActive_idx" ON "accounts"("isActive");
+CREATE INDEX "ledger_accounts_isActive_idx" ON "ledger_accounts"("isActive");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "transactions_paymentId_key" ON "transactions"("paymentId");
@@ -767,10 +906,10 @@ CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
 CREATE UNIQUE INDEX "categories_title_key" ON "categories"("title");
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -785,19 +924,34 @@ ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_userId_fkey" FOREIGN KEY ("u
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "doctors" ADD CONSTRAINT "doctors_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "employees" ADD CONSTRAINT "employees_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "doctors" ADD CONSTRAINT "doctors_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "employee_departments" ADD CONSTRAINT "employee_departments_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employee_departments" ADD CONSTRAINT "employee_departments_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employee_specializations" ADD CONSTRAINT "employee_specializations_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "employee_specializations" ADD CONSTRAINT "employee_specializations_specializationId_fkey" FOREIGN KEY ("specializationId") REFERENCES "specializations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "visits" ADD CONSTRAINT "visits_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "visits" ADD CONSTRAINT "visits_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "visits" ADD CONSTRAINT "visits_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "visits" ADD CONSTRAINT "visits_assignedBy_fkey" FOREIGN KEY ("assignedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "visits" ADD CONSTRAINT "visits_assignedBy_fkey" FOREIGN KEY ("assignedBy") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "visit_events" ADD CONSTRAINT "visit_events_visitId_fkey" FOREIGN KEY ("visitId") REFERENCES "visits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "visit_events" ADD CONSTRAINT "visit_events_performedBy_fkey" FOREIGN KEY ("performedBy") REFERENCES "employees"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "bills" ADD CONSTRAINT "bills_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -812,13 +966,13 @@ ALTER TABLE "bill_items" ADD CONSTRAINT "bill_items_billId_fkey" FOREIGN KEY ("b
 ALTER TABLE "payments" ADD CONSTRAINT "payments_billId_fkey" FOREIGN KEY ("billId") REFERENCES "bills"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_receivedBy_fkey" FOREIGN KEY ("receivedBy") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_receivedBy_fkey" FOREIGN KEY ("receivedBy") REFERENCES "employees"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "prescriptions" ADD CONSTRAINT "prescriptions_visitId_fkey" FOREIGN KEY ("visitId") REFERENCES "visits"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "prescriptions" ADD CONSTRAINT "prescriptions_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "prescriptions" ADD CONSTRAINT "prescriptions_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "prescription_items" ADD CONSTRAINT "prescription_items_prescriptionId_fkey" FOREIGN KEY ("prescriptionId") REFERENCES "prescriptions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -845,16 +999,16 @@ ALTER TABLE "test_orders" ADD CONSTRAINT "test_orders_visitId_fkey" FOREIGN KEY 
 ALTER TABLE "test_orders" ADD CONSTRAINT "test_orders_testTypeId_fkey" FOREIGN KEY ("testTypeId") REFERENCES "test_types"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "test_orders" ADD CONSTRAINT "test_orders_orderedBy_fkey" FOREIGN KEY ("orderedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "test_orders" ADD CONSTRAINT "test_orders_orderedBy_fkey" FOREIGN KEY ("orderedBy") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "test_results" ADD CONSTRAINT "test_results_testOrderId_fkey" FOREIGN KEY ("testOrderId") REFERENCES "test_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "test_results" ADD CONSTRAINT "test_results_technicianId_fkey" FOREIGN KEY ("technicianId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "test_results" ADD CONSTRAINT "test_results_technicianId_fkey" FOREIGN KEY ("technicianId") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "test_results" ADD CONSTRAINT "test_results_reviewedBy_fkey" FOREIGN KEY ("reviewedBy") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "test_results" ADD CONSTRAINT "test_results_reviewedBy_fkey" FOREIGN KEY ("reviewedBy") REFERENCES "employees"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "documents" ADD CONSTRAINT "documents_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -866,7 +1020,7 @@ ALTER TABLE "documents" ADD CONSTRAINT "documents_uploadedBy_fkey" FOREIGN KEY (
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "ledger_accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "payments"("id") ON DELETE SET NULL ON UPDATE CASCADE;

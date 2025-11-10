@@ -4,6 +4,8 @@ import {
   LuSettings,
   LuBuilding2,
   LuUsers,
+  LuStethoscope,
+  LuGraduationCap,
 } from "react-icons/lu";
 
 export interface SubMenuItem {
@@ -36,18 +38,30 @@ export const menuList: MenuItem[] = [
   },
   {
     id: 3,
+    title: "Doctors",
+    icon: <LuStethoscope className="icon" />,
+    url: "/dashboard/doctors",
+  },
+  {
+    id: 4,
     title: "Departments",
     icon: <LuBuilding2 className="icon" />,
     url: "/dashboard/departments",
   },
   {
-    id: 4,
+    id: 5,
+    title: "Specializations",
+    icon: <LuGraduationCap className="icon" />,
+    url: "/dashboard/specializations",
+  },
+  {
+    id: 6,
     title: "Categories",
     icon: <LuList className="icon" />,
     url: "/dashboard/categories",
   },
   {
-    id: 5,
+    id: 7,
     title: "Settings",
     icon: <LuSettings className="icon" />,
     url: "/dashboard/settings",

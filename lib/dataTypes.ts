@@ -56,3 +56,65 @@ export type Patient = {
   createdAt: string | Date;
   updatedAt: string | Date;
 };
+
+// Specialization
+export type Specialization = {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+// Employee (Doctor, Nurse, Technician, etc.)
+export type Employee = {
+  id: string;
+  userId: string;
+  bio: string | null;
+  qualification: string | null;
+  experiences: any; // JSON
+  certificates: any; // JSON
+  documents: any; // JSON
+  consultationFee: number | null;
+  hospitalFee: number | null;
+  isAvailable: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    avatar: string | null;
+    isActive: boolean;
+  };
+  employeeDepartments?: Array<{
+    id: string;
+    employeeId: string;
+    departmentId: string;
+    isPrimary: boolean;
+    department: {
+      id: string;
+      name: string;
+      code: string;
+    };
+  }>;
+  employeeSpecializations?: Array<{
+    id: string;
+    employeeId: string;
+    specializationId: string;
+    specialization: {
+      id: string;
+      name: string;
+      code: string;
+    };
+  }>;
+  _count?: {
+    doctorVisits: number;
+  };
+};
+
+// Doctor (alias for Employee for backward compatibility)
+export type Doctor = Employee;

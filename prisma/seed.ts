@@ -8,27 +8,32 @@ async function main() {
 
   // Clear existing data (optional - comment out if you want to keep existing data)
   console.log("🗑️  Clearing existing data...");
-  await prisma.audit_logs.deleteMany();
-  await prisma.notifications.deleteMany();
-  await prisma.documents.deleteMany();
-  await prisma.test_results.deleteMany();
-  await prisma.test_orders.deleteMany();
+
+  // Clear in correct order (respecting foreign keys)
+  await prisma.visit_events.deleteMany();
   await prisma.prescription_items.deleteMany();
   await prisma.prescriptions.deleteMany();
+  await prisma.test_results.deleteMany();
+  await prisma.test_orders.deleteMany();
   await prisma.bill_items.deleteMany();
   await prisma.payments.deleteMany();
   await prisma.bills.deleteMany();
   await prisma.visits.deleteMany();
-  await prisma.doctors.deleteMany();
-  await prisma.patients.deleteMany();
+  await prisma.employee_specializations.deleteMany();
+  await prisma.employee_departments.deleteMany();
+  await prisma.employees.deleteMany();
   await prisma.test_types.deleteMany();
   await prisma.test_templates.deleteMany();
   await prisma.labs.deleteMany();
   await prisma.medicines.deleteMany();
   await prisma.medicine_instructions.deleteMany();
+  await prisma.specializations.deleteMany();
+  await prisma.patients.deleteMany();
+  await prisma.documents.deleteMany();
+  await prisma.notifications.deleteMany();
   await prisma.sessions.deleteMany();
   await prisma.verification.deleteMany();
-  await prisma.accounts.deleteMany(); // Auth accounts
+  await prisma.accounts.deleteMany();
   await prisma.user_roles.deleteMany();
   await prisma.role_permissions.deleteMany();
   await prisma.users.deleteMany();
@@ -37,7 +42,8 @@ async function main() {
   await prisma.departments.deleteMany();
   await prisma.settings.deleteMany();
   await prisma.transactions.deleteMany();
-  await prisma.ledger_accounts.deleteMany(); // Financial accounts
+  await prisma.ledger_accounts.deleteMany();
+  await prisma.categories.deleteMany();
 
   // 1. Create Departments
   console.log("🏥 Creating departments...");
@@ -86,7 +92,45 @@ async function main() {
     },
   });
 
-  // 2. Create Roles
+  // 2. Create Specializations
+  console.log("🎓 Creating specializations...");
+  const interventionalCardiology = await prisma.specializations.create({
+    data: {
+      name: "Interventional Cardiology",
+      code: "INT-CARD",
+      description: "Catheter-based treatment of heart disease",
+      isActive: true,
+    },
+  });
+
+  const sportsMedicine = await prisma.specializations.create({
+    data: {
+      name: "Sports Medicine",
+      code: "SPORTS",
+      description: "Treatment of sports-related injuries",
+      isActive: true,
+    },
+  });
+
+  const generalPediatrics = await prisma.specializations.create({
+    data: {
+      name: "General Pediatrics",
+      code: "GEN-PED",
+      description: "Comprehensive healthcare for children",
+      isActive: true,
+    },
+  });
+
+  const clinicalPathology = await prisma.specializations.create({
+    data: {
+      name: "Clinical Pathology",
+      code: "CLIN-PATH",
+      description: "Laboratory diagnosis and testing",
+      isActive: true,
+    },
+  });
+
+  // 3. Create Roles
   console.log("👤 Creating roles...");
   const superAdminRole = await prisma.roles.create({
     data: {
@@ -138,7 +182,7 @@ async function main() {
     },
   });
 
-  // 3. Create Permissions
+  // 4. Create Permissions
   console.log("🔐 Creating permissions...");
   const permissions = [
     // Patients
@@ -172,7 +216,7 @@ async function main() {
     permissions.map((p) => prisma.permissions.create({ data: p })),
   );
 
-  // 4. Assign Permissions to Roles
+  // 5. Assign Permissions to Roles
   console.log("🔗 Assigning permissions to roles...");
   // Super Admin gets all permissions
   await Promise.all(
@@ -242,10 +286,11 @@ async function main() {
     ),
   );
 
-  // 5. Create Users
-  console.log("👥 Creating users...");
+  // 6. Create Users & Employees (Transaction-based like the API)
+  console.log("👥 Creating users and employees...");
   const hashedPassword = await hashPassword("password123");
 
+  // Admin User (no employee profile)
   const adminUser = await prisma.users.create({
     data: {
       name: "Admin User",
@@ -272,13 +317,13 @@ async function main() {
     },
   });
 
+  // Dr. Smith - Cardiologist
   const drSmith = await prisma.users.create({
     data: {
       name: "Dr. John Smith",
       email: "dr.smith@hospital.com",
       emailVerified: true,
       phone: "+1234567891",
-      departmentId: cardiology.id,
       isActive: true,
     },
   });
@@ -299,13 +344,39 @@ async function main() {
     },
   });
 
+  const drSmithEmployee = await prisma.employees.create({
+    data: {
+      userId: drSmith.id,
+      bio: "Experienced cardiologist with over 15 years in interventional cardiology. Specializes in complex coronary interventions.",
+      qualification: "MD, FACC, Fellowship in Interventional Cardiology",
+      consultationFee: 1500,
+      hospitalFee: 500,
+      isAvailable: true,
+    },
+  });
+
+  await prisma.employee_departments.create({
+    data: {
+      employeeId: drSmithEmployee.id,
+      departmentId: cardiology.id,
+      isPrimary: true,
+    },
+  });
+
+  await prisma.employee_specializations.create({
+    data: {
+      employeeId: drSmithEmployee.id,
+      specializationId: interventionalCardiology.id,
+    },
+  });
+
+  // Dr. Johnson - Orthopedic Surgeon
   const drJohnson = await prisma.users.create({
     data: {
       name: "Dr. Sarah Johnson",
       email: "dr.johnson@hospital.com",
       emailVerified: true,
       phone: "+1234567892",
-      departmentId: orthopedics.id,
       isActive: true,
     },
   });
@@ -326,13 +397,39 @@ async function main() {
     },
   });
 
+  const drJohnsonEmployee = await prisma.employees.create({
+    data: {
+      userId: drJohnson.id,
+      bio: "Board-certified orthopedic surgeon specializing in sports medicine and arthroscopic surgery.",
+      qualification: "MD, FAAOS, Sports Medicine Fellowship",
+      consultationFee: 1200,
+      hospitalFee: 400,
+      isAvailable: true,
+    },
+  });
+
+  await prisma.employee_departments.create({
+    data: {
+      employeeId: drJohnsonEmployee.id,
+      departmentId: orthopedics.id,
+      isPrimary: true,
+    },
+  });
+
+  await prisma.employee_specializations.create({
+    data: {
+      employeeId: drJohnsonEmployee.id,
+      specializationId: sportsMedicine.id,
+    },
+  });
+
+  // Dr. Brown - Pediatrician
   const drBrown = await prisma.users.create({
     data: {
       name: "Dr. Emily Brown",
       email: "dr.brown@hospital.com",
       emailVerified: true,
       phone: "+1234567893",
-      departmentId: pediatrics.id,
       isActive: true,
     },
   });
@@ -353,6 +450,33 @@ async function main() {
     },
   });
 
+  const drBrownEmployee = await prisma.employees.create({
+    data: {
+      userId: drBrown.id,
+      bio: "Compassionate pediatrician dedicated to providing comprehensive care for children from infancy through adolescence.",
+      qualification: "MD, FAAP, Board Certified Pediatrician",
+      consultationFee: 1000,
+      hospitalFee: 300,
+      isAvailable: true,
+    },
+  });
+
+  await prisma.employee_departments.create({
+    data: {
+      employeeId: drBrownEmployee.id,
+      departmentId: pediatrics.id,
+      isPrimary: true,
+    },
+  });
+
+  await prisma.employee_specializations.create({
+    data: {
+      employeeId: drBrownEmployee.id,
+      specializationId: generalPediatrics.id,
+    },
+  });
+
+  // Receptionist
   const receptionist = await prisma.users.create({
     data: {
       name: "Jane Receptionist",
@@ -379,13 +503,13 @@ async function main() {
     },
   });
 
+  // Lab Technician
   const labTech = await prisma.users.create({
     data: {
       name: "Mike Lab Tech",
       email: "lab@hospital.com",
       emailVerified: true,
       phone: "+1234567895",
-      departmentId: laboratory.id,
       isActive: true,
     },
   });
@@ -406,41 +530,27 @@ async function main() {
     },
   });
 
-  // 6. Create Doctor Profiles
-  console.log("👨‍⚕️ Creating doctor profiles...");
-  await prisma.doctors.create({
+  const labTechEmployee = await prisma.employees.create({
     data: {
-      userId: drSmith.id,
-      departmentId: cardiology.id,
-      specialization: "Interventional Cardiology",
-      qualification: "MD, FACC",
-      consultationFee: 1500,
-      hospitalFee: 500,
+      userId: labTech.id,
+      bio: "Experienced clinical laboratory technician",
+      qualification: "BS in Medical Technology, ASCP Certified",
       isAvailable: true,
     },
   });
 
-  await prisma.doctors.create({
+  await prisma.employee_departments.create({
     data: {
-      userId: drJohnson.id,
-      departmentId: orthopedics.id,
-      specialization: "Sports Medicine",
-      qualification: "MD, FAAOS",
-      consultationFee: 1200,
-      hospitalFee: 400,
-      isAvailable: true,
+      employeeId: labTechEmployee.id,
+      departmentId: laboratory.id,
+      isPrimary: true,
     },
   });
 
-  await prisma.doctors.create({
+  await prisma.employee_specializations.create({
     data: {
-      userId: drBrown.id,
-      departmentId: pediatrics.id,
-      specialization: "General Pediatrics",
-      qualification: "MD, FAAP",
-      consultationFee: 1000,
-      hospitalFee: 300,
-      isAvailable: true,
+      employeeId: labTechEmployee.id,
+      specializationId: clinicalPathology.id,
     },
   });
 
