@@ -32,7 +32,7 @@ async function main() {
   await prisma.documents.deleteMany();
   await prisma.notifications.deleteMany();
   await prisma.sessions.deleteMany();
-  await prisma.verification.deleteMany();
+  await prisma.verifications.deleteMany();
   await prisma.accounts.deleteMany();
   await prisma.user_roles.deleteMany();
   await prisma.role_permissions.deleteMany();

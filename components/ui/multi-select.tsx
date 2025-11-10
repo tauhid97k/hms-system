@@ -52,6 +52,7 @@ export function MultiSelect({
   };
 
   const handleRemove = (option: Option, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onChange?.(value.filter((v) => v.value !== option.value));
   };
@@ -76,13 +77,20 @@ export function MultiSelect({
                   className="gap-2 rounded pr-1.5 pl-2"
                 >
                   {option.label}
-                  <button
-                    type="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => handleRemove(option, e)}
-                    className="rounded bg-zinc-700 p-0.5"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRemove(option, e as any);
+                      }
+                    }}
+                    className="rounded bg-zinc-700 p-0.5 cursor-pointer hover:bg-zinc-600 transition-colors"
                   >
                     <LuX className="size-4" />
-                  </button>
+                  </span>
                 </Badge>
               ))
             ) : (

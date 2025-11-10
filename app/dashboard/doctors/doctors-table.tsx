@@ -38,7 +38,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useDebounceValue } from "usehooks-ts";
-import { LuEllipsisVertical, LuPencil, LuPower, LuTrash2 } from "react-icons/lu";
+import { LuEllipsisVertical, LuEye, LuPencil, LuPower, LuTrash2 } from "react-icons/lu";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -277,8 +277,12 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/doctors/${doctor.id}`}>
+                  <LuEye />
+                  View
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/dashboard/doctors/${doctor.id}/edit`}>
                   <LuPencil />
@@ -289,7 +293,6 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
                 <LuPower />
                 {doctor.isAvailable ? "Mark Unavailable" : "Mark Available"}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => setDeletingDoctor(doctor)}

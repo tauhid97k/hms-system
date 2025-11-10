@@ -74,7 +74,14 @@ export function DoctorForm({
   const handleSubmit = async (
     data: CreateDoctorFormData | UpdateDoctorFormData,
   ) => {
-    await onSubmit(data);
+    // Ensure departmentIds and specializationIds are always arrays
+    const submitData = {
+      ...data,
+      departmentIds: data.departmentIds || [],
+      specializationIds: data.specializationIds || [],
+    };
+
+    await onSubmit(submitData);
     if (mode === "create") {
       form.reset();
     }
@@ -353,14 +360,8 @@ export function DoctorForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading
-            ? mode === "create"
-              ? "Creating..."
-              : "Updating..."
-            : mode === "create"
-              ? "Create Doctor"
-              : "Update Doctor"}
+        <Button type="submit" disabled={isLoading} isLoading={isLoading}>
+          {mode === "create" ? "Create" : "Update"}
         </Button>
       </div>
     </form>

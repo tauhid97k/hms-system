@@ -118,3 +118,58 @@ export type Employee = {
 
 // Doctor (alias for Employee for backward compatibility)
 export type Doctor = Employee;
+
+// Bill
+export type Bill = {
+  id: string;
+  billNumber: string;
+  patientId: string;
+  visitId: string | null;
+  billableType: string | null;
+  billableId: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  discount: number;
+  status: "PENDING" | "PARTIAL" | "PAID" | "REFUNDED" | "CANCELLED";
+  billingDate: string | Date;
+  dueDate: string | Date | null;
+  notes: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  patient?: {
+    id: string;
+    patientId: string;
+    name: string;
+    phone: string;
+  };
+  visit?: {
+    id: string;
+    serialNumber: number;
+    visitType: string;
+    doctor: {
+      id: string;
+      user: {
+        name: string;
+      } | null;
+    };
+  } | null;
+  billItems?: Array<{
+    id: string;
+    itemableType: string;
+    itemableId: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+    discount: number;
+    total: number;
+    notes: string | null;
+  }>;
+  payments?: Array<{
+    id: string;
+    amount: number;
+    paymentMethod: string;
+    paymentDate: string | Date;
+    transactionId: string | null;
+  }>;
+};

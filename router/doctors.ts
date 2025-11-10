@@ -369,7 +369,7 @@ export const updateDoctor = os
     }
 
     // Transaction: Update user + employee + relationships
-    await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       // 1. Update user if any user fields provided
       if (name || email || phone !== undefined) {
         await tx.users.update({
@@ -396,7 +396,7 @@ export const updateDoctor = os
         },
       });
 
-      // 3. Update departments if provided
+      // 3. ALWAYS update departments if provided (even if empty array)
       if (departmentIds !== undefined) {
         // Remove all existing
         await tx.employee_departments.deleteMany({
@@ -407,7 +407,7 @@ export const updateDoctor = os
         if (departmentIds.length > 0) {
           await tx.employee_departments.createMany({
             data: departmentIds
-              .filter((id): id is string => !!id)
+              .filter((deptId): deptId is string => !!deptId)
               .map((deptId, index) => ({
                 employeeId: id,
                 departmentId: deptId,
@@ -417,7 +417,7 @@ export const updateDoctor = os
         }
       }
 
-      // 4. Update specializations if provided
+      // 4. ALWAYS update specializations if provided (even if empty array)
       if (specializationIds !== undefined) {
         // Remove all existing
         await tx.employee_specializations.deleteMany({
@@ -428,7 +428,7 @@ export const updateDoctor = os
         if (specializationIds.length > 0) {
           await tx.employee_specializations.createMany({
             data: specializationIds
-              .filter((id): id is string => !!id)
+              .filter((specId): specId is string => !!specId)
               .map((specId) => ({
                 employeeId: id,
                 specializationId: specId,
@@ -436,9 +436,45 @@ export const updateDoctor = os
           });
         }
       }
+
+      // Return updated employee with relationships
+      return await tx.employees.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+            },
+          },
+          employeeDepartments: {
+            include: {
+              department: {
+                select: { id: true, name: true, code: true },
+              },
+            },
+          },
+          employeeSpecializations: {
+            include: {
+              specialization: {
+                select: { id: true, name: true, code: true },
+              },
+            },
+          },
+          _count: {
+            select: {
+              doctorVisits: true,
+            },
+          },
+        },
+      });
     });
 
-    return { success: true, message: "Doctor updated successfully" };
+    return updated;
   });
 
 // Delete doctor

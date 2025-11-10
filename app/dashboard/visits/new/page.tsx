@@ -1,0 +1,97 @@
+import { client } from "@/lib/orpc";
+import { getSession } from "@/lib/auth";
+import { NewVisitForm } from "./_components/new-visit-form";
+import prisma from "@/lib/prisma";
+
+export default async function NewVisitPage() {
+  // Get current session
+  const session = await getSession();
+
+  // Get employee record for the current user (if logged in)
+  let employeeId = "";
+
+  if (session?.data?.user?.id) {
+    const employee = await prisma.employees.findFirst({
+      where: { userId: session.data.user.id },
+      select: { id: true },
+    });
+
+    if (employee) {
+      employeeId = employee.id;
+    }
+  }
+
+  // For now, if no employee record, we'll use the first available employee
+  // This is temporary - in production you'd enforce proper auth
+  if (!employeeId) {
+    const firstEmployee = await prisma.employees.findFirst({
+      select: { id: true },
+    });
+    if (firstEmployee) {
+      employeeId = firstEmployee.id;
+    }
+  }
+
+  // Server-side data fetching - fetch all active patients and doctors
+  // Since we need all records for dropdowns, we'll fetch multiple pages if needed
+  const fetchAllPatients = async () => {
+    const firstPage = await client.patients.getAll({ page: 1, limit: 100, isActive: "true" });
+    let allPatients = [...firstPage.data];
+
+    // If there are more pages, fetch them
+    const totalPages = Math.ceil(firstPage.meta.total / firstPage.meta.limit);
+    if (totalPages > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, i) =>
+          client.patients.getAll({ page: i + 2, limit: 100, isActive: "true" })
+        )
+      );
+      allPatients = [...allPatients, ...remainingPages.flatMap(p => p.data)];
+    }
+
+    return allPatients;
+  };
+
+  const fetchAllDoctors = async () => {
+    const firstPage = await client.doctors.getAll({ page: 1, limit: 100, isAvailable: "true" });
+    let allDoctors = [...firstPage.data];
+
+    // If there are more pages, fetch them
+    const totalPages = Math.ceil(firstPage.meta.total / firstPage.meta.limit);
+    if (totalPages > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, i) =>
+          client.doctors.getAll({ page: i + 2, limit: 100, isAvailable: "true" })
+        )
+      );
+      allDoctors = [...allDoctors, ...remainingPages.flatMap(p => p.data)];
+    }
+
+    return allDoctors;
+  };
+
+  const [patients, doctors] = await Promise.all([
+    fetchAllPatients(),
+    fetchAllDoctors(),
+  ]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-medium">Register New Visit</h1>
+        <p className="text-sm text-muted-foreground">
+          Register a patient visit and assign to a doctor. A bill will be
+          automatically generated.
+        </p>
+      </div>
+
+      <div className="rounded-xl border bg-card p-6">
+        <NewVisitForm
+          patients={patients}
+          doctors={doctors}
+          currentEmployeeId={employeeId}
+        />
+      </div>
+    </div>
+  );
+}

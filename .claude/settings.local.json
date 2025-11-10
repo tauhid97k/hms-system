@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ls:*)",
       "WebFetch(domain:www.better-auth.com)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:orpc.unnoq.com)"
     ],
     "deny": [],
     "ask": []

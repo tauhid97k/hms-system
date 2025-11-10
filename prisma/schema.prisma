@@ -138,12 +138,12 @@ model users {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  userRoles        user_roles[]
-  employeeProfile  employees?
-  sessions         sessions[]
-  accounts         accounts[]      @relation("UserAccounts")
-  documents        documents[]
-  notifications    notifications[]
+  userRoles       user_roles[]
+  employeeProfile employees?
+  sessions        sessions[]
+  accounts        accounts[]      @relation("UserAccounts")
+  documents       documents[]
+  notifications   notifications[]
 
   @@index([email])
   @@index([isActive])
@@ -167,19 +167,19 @@ model sessions {
 }
 
 model accounts {
-  id                      String    @id @default(ulid())
-  userId                  String
-  accountId               String
-  providerId              String
-  accessToken             String?
-  refreshToken            String?
-  accessTokenExpiresAt    DateTime?
-  refreshTokenExpiresAt   DateTime?
-  scope                   String?
-  idToken                 String?
-  password                String?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  id                    String    @id @default(ulid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user users @relation("UserAccounts", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -188,7 +188,7 @@ model accounts {
   @@index([providerId])
 }
 
-model verification {
+model verifications {
   id         String   @id @default(ulid())
   identifier String
   value      String
@@ -299,34 +299,34 @@ model specializations {
 // ============= EMPLOYEES (Doctors, Nurses, Staff, etc.) =============
 
 model employees {
-  id            String   @id @default(ulid())
-  userId        String   @unique
-  bio           String?  @db.Text
-  qualification String?  @db.Text
+  id            String  @id @default(ulid())
+  userId        String  @unique
+  bio           String? @db.Text
+  qualification String? @db.Text
   experiences   Json? // Array of {company, designation, startDate, endDate, description}
   certificates  Json? // Array of certificate objects
   documents     Json? // File uploads metadata
 
   // Doctor/Medical Staff specific
   consultationFee Float?
-  hospitalFee     Float?   @default(0)
-  isAvailable     Boolean  @default(true)
+  hospitalFee     Float?  @default(0)
+  isAvailable     Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  user                    users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   employeeDepartments     employee_departments[]
   employeeSpecializations employee_specializations[]
-  doctorVisits            visits[]                  @relation("DoctorVisits")
-  assignedVisits          visits[]                  @relation("AssignedVisits")
+  doctorVisits            visits[]                   @relation("DoctorVisits")
+  assignedVisits          visits[]                   @relation("AssignedVisits")
   prescriptions           prescriptions[]
-  testResults             test_results[]            @relation("Technician")
-  reviewedTests           test_results[]            @relation("Reviewer")
-  orderedTests            test_orders[]             @relation("OrderedBy")
+  testResults             test_results[]             @relation("Technician")
+  reviewedTests           test_results[]             @relation("Reviewer")
+  orderedTests            test_orders[]              @relation("OrderedBy")
   receivedPayments        payments[]
-  visitEvents             visit_events[]            @relation("PerformedBy")
+  visitEvents             visit_events[]             @relation("PerformedBy")
 
   @@index([userId])
   @@index([isAvailable])
@@ -413,13 +413,13 @@ model visits {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  patient          patients        @relation(fields: [patientId], references: [id])
-  doctor           employees       @relation("DoctorVisits", fields: [doctorId], references: [id])
-  assignedByEmployee employees     @relation("AssignedVisits", fields: [assignedBy], references: [id])
-  bills            bills[]
-  prescriptions    prescriptions[]
-  testOrders       test_orders[]
-  visitEvents      visit_events[]
+  patient            patients        @relation(fields: [patientId], references: [id])
+  doctor             employees       @relation("DoctorVisits", fields: [doctorId], references: [id])
+  assignedByEmployee employees       @relation("AssignedVisits", fields: [assignedBy], references: [id])
+  bills              bills[]
+  prescriptions      prescriptions[]
+  testOrders         test_orders[]
+  visitEvents        visit_events[]
 
   @@index([doctorId, visitDate, queuePosition]) // Queue management
   @@index([patientId, visitDate]) // Patient history
@@ -432,16 +432,16 @@ model visits {
 // ============= VISIT EVENTS (Event Sourcing Pattern) =============
 
 model visit_events {
-  id            String         @id @default(ulid())
-  visitId       String
-  eventType     VisitEventType
-  description   String?
-  metadata      Json? // Flexible data: billId, testId, fileUrl, duration, etc.
-  performedBy   String? // References employees.id
-  performedAt   DateTime       @default(now())
-  createdAt     DateTime       @default(now())
+  id          String         @id @default(ulid())
+  visitId     String
+  eventType   VisitEventType
+  description String?
+  metadata    Json? // Flexible data: billId, testId, fileUrl, duration, etc.
+  performedBy String? // References employees.id
+  performedAt DateTime       @default(now())
+  createdAt   DateTime       @default(now())
 
-  visit             visits     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  visit               visits     @relation(fields: [visitId], references: [id], onDelete: Cascade)
   performedByEmployee employees? @relation("PerformedBy", fields: [performedBy], references: [id])
 
   @@index([visitId, performedAt]) // Timeline reconstruction
@@ -657,10 +657,10 @@ model test_orders {
   orderedAt  DateTime   @default(now())
   billId     String?
 
-  visit           visits        @relation(fields: [visitId], references: [id])
-  testType        test_types    @relation(fields: [testTypeId], references: [id])
-  orderedByEmployee employees   @relation("OrderedBy", fields: [orderedBy], references: [id])
-  result          test_results?
+  visit             visits        @relation(fields: [visitId], references: [id])
+  testType          test_types    @relation(fields: [testTypeId], references: [id])
+  orderedByEmployee employees     @relation("OrderedBy", fields: [orderedBy], references: [id])
+  result            test_results?
 
   @@index([visitId])
   @@index([testTypeId, status]) // Lab queue

@@ -43,31 +43,29 @@ const SignUpForm = () => {
 
   // On Submit
   const onSubmit = async (values: SignUpSchemaType) => {
-    setPendingAuth(true);
-    setFormError("");
-
-    try {
-      const result = await signUp.email({
+    await signUp.email(
+      {
         name: values.name,
         email: values.email,
         password: values.password,
-      });
+      },
+      {
+        onRequest: () => {
+          setPendingAuth(true);
+          setFormError("");
+        },
+        onSuccess: () => {
+          toast.success("Registration successful");
+          router.push("/dashboard");
+          router.refresh();
+        },
+        onError: (ctx) => {
+          setFormError(ctx.error.message);
+        },
+      },
+    );
 
-      if (result.error) {
-        setFormError(result.error.message || "Failed to create account");
-        toast.error(result.error.message || "Failed to create account");
-      } else {
-        toast.success("Account created successfully!");
-        router.push("/dashboard");
-        router.refresh();
-      }
-    } catch (error: any) {
-      const errorMsg = error.message || "An error occurred during sign up";
-      setFormError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setPendingAuth(false);
-    }
+    setPendingAuth(false);
   };
 
   return (

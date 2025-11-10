@@ -30,11 +30,14 @@ export function EditDoctorForm({ doctor, departments, specializations }: EditDoc
 
     if (error) {
       toast.error(error.message || "Failed to update doctor");
+      setIsLoading(false);
     } else {
       toast.success("Doctor updated successfully");
-      router.back();
+      // Redirect to doctors list and refresh to show updated data
+      router.push("/dashboard/doctors");
+      router.refresh();
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleCancel = () => {

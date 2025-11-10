@@ -1,0 +1,280 @@
+"use client";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown";
+import type { PaginatedData } from "@/lib/dataTypes";
+import { ColumnDef } from "@tanstack/react-table";
+import { useRouter, useSearchParams } from "next/navigation";
+import { format } from "date-fns";
+import Link from "next/link";
+import { LuEllipsisVertical, LuEye, LuPrinter, LuUser, LuStethoscope } from "react-icons/lu";
+
+type Visit = {
+  id: string;
+  serialNumber: number;
+  queuePosition: number;
+  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
+  visitType: "NEW" | "FOLLOWUP";
+  visitDate: Date;
+  patient: {
+    id: string;
+    patientId: string;
+    name: string;
+    age: number;
+    gender: string | null;
+    phone: string;
+  };
+  doctor: {
+    id: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    employeeDepartments?: Array<{
+      id: string;
+      department: {
+        id: string;
+        name: string;
+      };
+    }>;
+  };
+};
+
+type VisitsTableProps = {
+  initialData: PaginatedData<Visit>;
+  currentDate: string;
+};
+
+const statusConfig = {
+  WAITING: { label: "Waiting", variant: "secondary" as const },
+  IN_CONSULTATION: { label: "In Consultation", variant: "default" as const },
+  COMPLETED: { label: "Completed", variant: "success" as const },
+  CANCELLED: { label: "Cancelled", variant: "destructive" as const },
+};
+
+export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleStatusChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", value);
+    }
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handlePageChange = (page: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handleLimitChange = (limit: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("limit", limit);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const columns: ColumnDef<Visit>[] = [
+    {
+      accessorKey: "serialNumber",
+      header: "Serial #",
+      cell: ({ row }) => (
+        <div className="font-mono font-bold">#{row.original.serialNumber}</div>
+      ),
+    },
+    {
+      accessorKey: "patient.name",
+      header: "Patient",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.patient.name}</div>
+          <div className="text-sm text-muted-foreground">
+            {row.original.patient.patientId} • {row.original.patient.age}y •{" "}
+            {row.original.patient.gender || "N/A"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "doctor.user.name",
+      header: "Doctor",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          Dr. {row.original.doctor.user?.name || "Unknown"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "doctor.employeeDepartments",
+      header: "Department",
+      cell: ({ row }) => {
+        const departments = row.original.doctor.employeeDepartments || [];
+        if (departments.length === 0) {
+          return <span className="text-sm text-muted-foreground">-</span>;
+        }
+        return (
+          <Badge variant="secondary">
+            {departments[0].department.name}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "visitType",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.visitType === "NEW" ? "default" : "secondary"}
+        >
+          {row.original.visitType}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const config = statusConfig[row.original.status];
+        return (
+          <Badge variant={config.variant}>
+            {config.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "queuePosition",
+      header: "Queue Position",
+      cell: ({ row }) => {
+        const status = row.original.status;
+        if (status === "WAITING" || status === "IN_CONSULTATION") {
+          return (
+            <div className="text-center font-mono">
+              {row.original.queuePosition}
+            </div>
+          );
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
+    },
+    {
+      accessorKey: "visitDate",
+      header: "Time",
+      cell: ({ row }) => (
+        <div className="text-sm text-muted-foreground">
+          {format(new Date(row.original.visitDate), "h:mm a")}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const visit = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <LuEllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/patients/${visit.patient.id}`}>
+                  <LuUser />
+                  View Patient
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/doctors/${visit.doctor.id}`}>
+                  <LuStethoscope />
+                  View Doctor
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <LuPrinter />
+                Print Receipt
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  return (
+    <>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-medium">Visits</h1>
+          <p className="text-sm text-muted-foreground">
+            Today's patient visits - {format(new Date(currentDate), "MMMM d, yyyy")}
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/dashboard/visits/new">Register New Visit</Link>
+        </Button>
+      </div>
+
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-6 flex items-center gap-4">
+          <Select
+            value={searchParams.get("status") || "all"}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="WAITING">Waiting</SelectItem>
+              <SelectItem value="IN_CONSULTATION">In Consultation</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {initialData.data.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-muted-foreground">No visits found</p>
+          </div>
+        ) : (
+          <>
+            <DataTable columns={columns} data={initialData.data} />
+            <Pagination
+              meta={initialData.meta}
+              onPageChange={handlePageChange}
+              onLimitChange={handleLimitChange}
+            />
+          </>
+        )}
+      </div>
+    </>
+  );
+}

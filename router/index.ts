@@ -30,7 +30,20 @@ import {
   deleteDoctor,
   toggleDoctorAvailability,
 } from "./doctors"
-import { getVisit } from "./visits"
+import {
+  getVisits,
+  getVisit,
+  createVisit,
+  updateVisit,
+  updateVisitStatus,
+  callNextPatient,
+  getQueue,
+} from "./visits"
+import {
+  getBills,
+  getBill,
+  updateBillStatus,
+} from "./bills"
 
 export const router = {
   categories: {
@@ -70,6 +83,17 @@ export const router = {
     toggleAvailability: toggleDoctorAvailability,
   },
   visits: {
+    getAll: getVisits,
     getOne: getVisit,
+    create: createVisit,
+    update: updateVisit,
+    updateStatus: updateVisitStatus,
+    callNextPatient: callNextPatient,
+    getQueue: getQueue,
+  },
+  bills: {
+    getAll: getBills,
+    getOne: getBill,
+    updateStatus: updateBillStatus,
   },
 }

@@ -41,30 +41,28 @@ const SignInForm = () => {
 
   // On Submit
   const onSubmit = async (values: SignInSchemaType) => {
-    setPendingAuth(true);
-    setFormError("");
-
-    try {
-      const result = await signIn.email({
+    await signIn.email(
+      {
         email: values.email,
         password: values.password,
-      });
+      },
+      {
+        onRequest: () => {
+          setPendingAuth(true);
+          setFormError("");
+        },
+        onSuccess: () => {
+          toast.success("Login successful");
+          router.push("/dashboard");
+          router.refresh();
+        },
+        onError: (ctx) => {
+          setFormError(ctx.error.message);
+        },
+      },
+    );
 
-      if (result.error) {
-        setFormError(result.error.message || "Invalid email or password");
-        toast.error(result.error.message || "Invalid email or password");
-      } else {
-        toast.success("Signed in successfully!");
-        router.push("/dashboard");
-        router.refresh();
-      }
-    } catch (error: any) {
-      const errorMsg = error.message || "An error occurred during sign in";
-      setFormError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setPendingAuth(false);
-    }
+    setPendingAuth(false);
   };
 
   return (

@@ -1,6 +1,9 @@
 import { client } from "@/lib/orpc";
 import { DoctorsTable } from "./doctors-table";
 
+// Force dynamic rendering to ensure fresh data
+export const dynamic = "force-dynamic";
+
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function DoctorsPage(props: {
