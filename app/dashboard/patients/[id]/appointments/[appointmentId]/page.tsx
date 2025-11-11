@@ -11,6 +11,22 @@ type AppointmentJourneyPageProps = {
   params: Promise<{ id: string; appointmentId: string }>;
 };
 
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+type AppointmentEvent = {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: Date;
+  userId?: string;
+};
+
+type AppointmentWithEvents = {
+  id: string;
+  appointmentEvents?: AppointmentEvent[];
+  [key: string]: any;
+};
+
 export default async function AppointmentJourneyPage({ params }: AppointmentJourneyPageProps) {
   const { id, appointmentId } = await params;
 
@@ -21,7 +37,7 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
       notFound();
     }
 
-    const statusMap: Record<string, { label: string; variant: any }> = {
+    const statusMap: Record<string, { label: string; variant: BadgeVariant }> = {
       PENDING: { label: "Pending", variant: "secondary" },
       IN_PROGRESS: { label: "In Progress", variant: "default" },
       COMPLETED: { label: "Completed", variant: "default" },
@@ -36,18 +52,19 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/dashboard/patients/${id}`}>
-              <LuArrowLeft />
-            </Link>
-          </Button>
+        <div className="flex items-center justify-between">
           <div className="flex-1">
             <h1 className="text-2xl font-medium">Appointment Journey</h1>
             <p className="text-sm text-muted-foreground">
               Complete timeline for {appointment.patient.name} ({appointment.patient.patientId})
             </p>
           </div>
+          <Button variant="secondary" asChild>
+            <Link href={`/dashboard/patients/${id}`}>
+              <LuArrowLeft />
+              Back
+            </Link>
+          </Button>
         </div>
 
         {/* Appointment Summary */}
@@ -80,7 +97,7 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
             </div>
             {appointment.chiefComplaint && (
               <div className="sm:col-span-2">
-                <p className="text-sm text-muted-foreground">Chief Complaint</p>
+                <p className="text-sm text-muted-foreground">Reason</p>
                 <p className="font-medium">{appointment.chiefComplaint}</p>
               </div>
             )}
@@ -96,11 +113,11 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
         {/* Timeline */}
         <div>
           <h2 className="mb-4 text-lg font-medium">Patient Journey Timeline</h2>
-          <AppointmentTimeline journey={(appointment as any).appointmentEvents || []} appointment={appointment} />
+          <AppointmentTimeline journey={(appointment as AppointmentWithEvents).appointmentEvents || []} appointment={appointment} />
         </div>
       </div>
     );
-  } catch (error) {
+  } catch {
     notFound();
   }
 }

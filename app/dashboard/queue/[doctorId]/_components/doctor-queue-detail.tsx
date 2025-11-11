@@ -1,27 +1,24 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Doctor } from "@/lib/dataTypes";
-import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
-import { LuArrowLeft, LuEye } from "react-icons/lu";
-import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown";
-import { LuEllipsisVertical } from "react-icons/lu";
+import type { Doctor } from "@/lib/dataTypes";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
-import { toast } from "sonner";
+import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { LuArrowLeft, LuEllipsisVertical, LuEye } from "react-icons/lu";
+import { toast } from "sonner";
 
 const safeClient = createSafeClient(client);
 
@@ -69,15 +66,17 @@ export function DoctorQueueDetail({
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  const waitingCount = initialQueue.filter((a) => a.status === "WAITING").length;
+  const waitingCount = initialQueue.filter(
+    (a) => a.status === "WAITING",
+  ).length;
   const consultingCount = initialQueue.filter(
-    (a) => a.status === "IN_CONSULTATION"
+    (a) => a.status === "IN_CONSULTATION",
   ).length;
 
   const handleStatusChange = async (
     appointmentId: string,
     status: string,
-    employeeId: string
+    employeeId: string,
   ) => {
     setIsUpdating(appointmentId);
 
@@ -93,7 +92,7 @@ export function DoctorQueueDetail({
       toast.success(
         `Appointment status updated to ${
           statusLabels[status as keyof typeof statusLabels]
-        }`
+        }`,
       );
       router.refresh();
     }
@@ -164,7 +163,9 @@ export function DoctorQueueDetail({
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
+          variant={
+            row.original.appointmentType === "NEW" ? "default" : "secondary"
+          }
         >
           {row.original.appointmentType}
         </Badge>
@@ -199,7 +200,8 @@ export function DoctorQueueDetail({
       cell: ({ row }) => {
         const appointment = row.original;
         const canUpdate =
-          appointment.status === "WAITING" || appointment.status === "IN_CONSULTATION";
+          appointment.status === "WAITING" ||
+          appointment.status === "IN_CONSULTATION";
 
         return (
           <DropdownMenu>
@@ -225,7 +227,11 @@ export function DoctorQueueDetail({
                   {appointment.status === "WAITING" && (
                     <DropdownMenuItem
                       onClick={() =>
-                        handleStatusChange(appointment.id, "IN_CONSULTATION", employeeId)
+                        handleStatusChange(
+                          appointment.id,
+                          "IN_CONSULTATION",
+                          employeeId,
+                        )
                       }
                     >
                       Mark as In Consultation
@@ -234,7 +240,11 @@ export function DoctorQueueDetail({
                   {appointment.status === "IN_CONSULTATION" && (
                     <DropdownMenuItem
                       onClick={() =>
-                        handleStatusChange(appointment.id, "COMPLETED", employeeId)
+                        handleStatusChange(
+                          appointment.id,
+                          "COMPLETED",
+                          employeeId,
+                        )
                       }
                     >
                       Mark as Completed
@@ -243,7 +253,11 @@ export function DoctorQueueDetail({
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() =>
-                      handleStatusChange(appointment.id, "CANCELLED", employeeId)
+                      handleStatusChange(
+                        appointment.id,
+                        "CANCELLED",
+                        employeeId,
+                      )
                     }
                   >
                     Cancel Appointment
@@ -260,7 +274,7 @@ export function DoctorQueueDetail({
   return (
     <>
       <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
+        <Button variant="secondary" asChild className="mb-4">
           <Link href="/dashboard/queue">
             <LuArrowLeft />
             Back to Queue

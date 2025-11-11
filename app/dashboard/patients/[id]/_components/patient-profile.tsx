@@ -39,16 +39,16 @@ export function PatientProfile({ patient }: PatientProfileProps) {
         {/* Middle Section: Stats */}
         {patient._count && (
           <div className="mb-6 grid w-full grid-cols-3 gap-4 border-y py-4">
-            <div>
-              <p className="text-2xl font-bold">{patient._count.visits}</p>
+            <div className="text-center">
+              <p className="text-2xl font-bold">{patient._count.visits || 0}</p>
               <p className="text-xs text-muted-foreground">Appointments</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{patient._count.documents}</p>
+            <div className="text-center">
+              <p className="text-2xl font-bold">{patient._count.documents || 0}</p>
               <p className="text-xs text-muted-foreground">Documents</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{patient._count.bills}</p>
+            <div className="text-center">
+              <p className="text-2xl font-bold">{patient._count.bills || 0}</p>
               <p className="text-xs text-muted-foreground">Bills</p>
             </div>
           </div>

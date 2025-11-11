@@ -3,8 +3,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Doctor } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LuEye } from "react-icons/lu";
 
@@ -13,13 +21,50 @@ type QueueData = {
   waitingCount: number;
   consultingCount: number;
   totalInQueue: number;
+  appointments?: Appointment[];
+};
+
+type Appointment = {
+  id: string;
+  doctorId: string;
+  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
+};
+
+type QueueFilters = {
+  doctorId?: string;
+  status?: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
 };
 
 type QueueTableProps = {
   initialData: QueueData[];
+  doctors: Doctor[];
+  currentFilters: QueueFilters;
 };
 
-export function QueueTable({ initialData }: QueueTableProps) {
+export function QueueTable({ initialData, doctors, currentFilters }: QueueTableProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleDoctorChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("doctorId");
+    } else {
+      params.set("doctorId", value);
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handleStatusChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", value);
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const columns: ColumnDef<QueueData>[] = [
     {
       accessorKey: "doctor.user.name",
@@ -122,15 +167,42 @@ export function QueueTable({ initialData }: QueueTableProps) {
       </div>
 
       <div className="rounded-xl border bg-card p-6">
-        {initialData.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No doctors available at the moment
-            </p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={initialData} />
-        )}
+        <div className="mb-6 flex items-center gap-4">
+          <Select
+            value={currentFilters.doctorId || "all"}
+            onValueChange={handleDoctorChange}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Doctors</SelectItem>
+              {doctors.map((doctor) => (
+                <SelectItem key={doctor.id} value={doctor.id}>
+                  Dr. {doctor.user?.name || "Unknown"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={currentFilters.status || "all"}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="WAITING">Waiting</SelectItem>
+              <SelectItem value="IN_CONSULTATION">In Consultation</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <DataTable columns={columns} data={initialData} />
       </div>
     </>
   );

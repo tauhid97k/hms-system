@@ -3,6 +3,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
@@ -11,20 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown";
-import type { PaginatedData, Doctor } from "@/lib/dataTypes";
+import type { Doctor, PaginatedData } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import Link from "next/link";
-import { LuEllipsisVertical, LuEye, LuPrinter, LuUser, LuStethoscope } from "react-icons/lu";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  LuEllipsisVertical,
+  LuPrinter,
+  LuStethoscope,
+  LuUser,
+} from "react-icons/lu";
 
 type Appointment = {
   id: string;
@@ -71,7 +74,11 @@ const statusConfig = {
   CANCELLED: { label: "Cancelled", variant: "destructive" as const },
 };
 
-export function AppointmentsTable({ initialData, currentDate, doctors }: AppointmentsTableProps) {
+export function AppointmentsTable({
+  initialData,
+  currentDate,
+  doctors,
+}: AppointmentsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -148,9 +155,7 @@ export function AppointmentsTable({ initialData, currentDate, doctors }: Appoint
           return <span className="text-sm text-muted-foreground">-</span>;
         }
         return (
-          <Badge variant="secondary">
-            {departments[0].department.name}
-          </Badge>
+          <Badge variant="secondary">{departments[0].department.name}</Badge>
         );
       },
     },
@@ -159,7 +164,9 @@ export function AppointmentsTable({ initialData, currentDate, doctors }: Appoint
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
+          variant={
+            row.original.appointmentType === "NEW" ? "default" : "secondary"
+          }
         >
           {row.original.appointmentType}
         </Badge>
@@ -170,11 +177,7 @@ export function AppointmentsTable({ initialData, currentDate, doctors }: Appoint
       header: "Status",
       cell: ({ row }) => {
         const config = statusConfig[row.original.status];
-        return (
-          <Badge variant={config.variant}>
-            {config.label}
-          </Badge>
-        );
+        return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
     {
@@ -245,11 +248,12 @@ export function AppointmentsTable({ initialData, currentDate, doctors }: Appoint
         <div>
           <h1 className="text-2xl font-medium">Appointments</h1>
           <p className="text-sm text-muted-foreground">
-            Today's patient appointments - {format(new Date(currentDate), "MMMM d, yyyy")}
+            Today&apos;s patient appointments -{" "}
+            {format(new Date(currentDate), "MMMM d, yyyy")}
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/appointments/new">Register New Appointment</Link>
+          <Link href="/dashboard/appointments/new">New Appointment</Link>
         </Button>
       </div>
 
@@ -289,20 +293,12 @@ export function AppointmentsTable({ initialData, currentDate, doctors }: Appoint
           </Select>
         </div>
 
-        {initialData.data.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground">No appointments found</p>
-          </div>
-        ) : (
-          <>
-            <DataTable columns={columns} data={initialData.data} />
-            <Pagination
-              meta={initialData.meta}
-              onPageChange={handlePageChange}
-              onLimitChange={handleLimitChange}
-            />
-          </>
-        )}
+        <DataTable columns={columns} data={initialData.data} />
+        <Pagination
+          meta={initialData.meta}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
       </div>
     </>
   );

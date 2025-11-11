@@ -1,7 +1,7 @@
-import { client } from "@/lib/orpc";
 import { getSession } from "@/lib/auth";
-import { NewAppointmentForm } from "./_components/new-appointment-form";
+import { client } from "@/lib/orpc";
 import prisma from "@/lib/prisma";
+import { NewAppointmentForm } from "./_components/new-appointment-form";
 
 export default async function NewAppointmentPage() {
   // Get current session
@@ -35,7 +35,11 @@ export default async function NewAppointmentPage() {
   // Server-side data fetching - fetch all active patients and doctors
   // Since we need all records for dropdowns, we'll fetch multiple pages if needed
   const fetchAllPatients = async () => {
-    const firstPage = await client.patients.getAll({ page: 1, limit: 100, isActive: "true" });
+    const firstPage = await client.patients.getAll({
+      page: 1,
+      limit: 100,
+      isActive: "true",
+    });
     let allPatients = [...firstPage.data];
 
     // If there are more pages, fetch them
@@ -43,17 +47,21 @@ export default async function NewAppointmentPage() {
     if (totalPages > 1) {
       const remainingPages = await Promise.all(
         Array.from({ length: totalPages - 1 }, (_, i) =>
-          client.patients.getAll({ page: i + 2, limit: 100, isActive: "true" })
-        )
+          client.patients.getAll({ page: i + 2, limit: 100, isActive: "true" }),
+        ),
       );
-      allPatients = [...allPatients, ...remainingPages.flatMap(p => p.data)];
+      allPatients = [...allPatients, ...remainingPages.flatMap((p) => p.data)];
     }
 
     return allPatients;
   };
 
   const fetchAllDoctors = async () => {
-    const firstPage = await client.doctors.getAll({ page: 1, limit: 100, isAvailable: "true" });
+    const firstPage = await client.doctors.getAll({
+      page: 1,
+      limit: 100,
+      isAvailable: "true",
+    });
     let allDoctors = [...firstPage.data];
 
     // If there are more pages, fetch them
@@ -61,10 +69,14 @@ export default async function NewAppointmentPage() {
     if (totalPages > 1) {
       const remainingPages = await Promise.all(
         Array.from({ length: totalPages - 1 }, (_, i) =>
-          client.doctors.getAll({ page: i + 2, limit: 100, isAvailable: "true" })
-        )
+          client.doctors.getAll({
+            page: i + 2,
+            limit: 100,
+            isAvailable: "true",
+          }),
+        ),
       );
-      allDoctors = [...allDoctors, ...remainingPages.flatMap(p => p.data)];
+      allDoctors = [...allDoctors, ...remainingPages.flatMap((p) => p.data)];
     }
 
     return allDoctors;
@@ -78,7 +90,7 @@ export default async function NewAppointmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium">Register New Appointment</h1>
+        <h1 className="text-2xl font-medium">New Appointment</h1>
         <p className="text-sm text-muted-foreground">
           Register a patient appointment and assign to a doctor. A bill will be
           automatically generated.

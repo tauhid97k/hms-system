@@ -3,17 +3,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown";
-import { formatDateTime } from "@/lib/date-format";
 import { ColumnDef } from "@tanstack/react-table";
-import { LuEllipsisVertical, LuEye } from "react-icons/lu";
+import { formatDateTime } from "@/lib/date-format";
 import Link from "next/link";
 
 // Simplified Appointment type for the table
@@ -24,6 +15,14 @@ type Appointment = {
   chiefComplaint: string | null;
   diagnosis: string | null;
   createdAt: Date;
+  doctor: {
+    user: {
+      name: string;
+    };
+  };
+  department: {
+    name: string;
+  };
 };
 
 type AppointmentHistoryTableProps = {
@@ -45,7 +44,7 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
       header: "Department",
       cell: ({ row }) => (
         <div className="text-sm">
-          <span className="text-muted-foreground">Not assigned</span>
+          {row.original.department?.name}
         </div>
       ),
     },
@@ -54,14 +53,14 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
       header: "Doctor",
       cell: ({ row }) => (
         <div className="text-sm">
-          <span className="text-muted-foreground">Not assigned</span>
+          Dr. {row.original.doctor?.user?.name}
         </div>
       ),
     },
     {
       accessorKey: "tests",
       header: "Tests",
-      cell: ({ row }) => (
+      cell: () => (
         <div className="text-sm">
           <span className="text-muted-foreground">0 Tests</span>
         </div>
@@ -69,7 +68,7 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
     },
     {
       accessorKey: "chiefComplaint",
-      header: "Chief Complaint",
+      header: "Reason",
       cell: ({ row }) => (
         <div className="max-w-xs truncate text-sm">
           {row.original.chiefComplaint || (
@@ -82,7 +81,7 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const statusMap: Record<string, { label: string; variant: any }> = {
+        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
           PENDING: { label: "Pending", variant: "secondary" },
           IN_PROGRESS: { label: "In Progress", variant: "default" },
           COMPLETED: { label: "Completed", variant: "default" },
@@ -99,28 +98,16 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
     },
     {
       id: "actions",
+      header: "Actions",
       cell: ({ row }) => {
         const appointment = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <LuEllipsisVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/dashboard/patients/${patientId}/appointments/${appointment.id}`}>
-                  <LuEye />
-                  View Journey
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/dashboard/patients/${patientId}/appointments/${appointment.id}`}>
+              View Journey
+            </Link>
+          </Button>
         );
       },
     },

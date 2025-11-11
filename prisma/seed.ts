@@ -1,5 +1,6 @@
 import { hashPassword } from "better-auth/crypto";
 import { BloodGroup, Gender, PrismaClient } from "./generated/client";
+import { format } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -854,6 +855,66 @@ async function main() {
       isActive: true,
     },
   });
+
+  // 14. Create Sample Appointments
+  console.log("📅 Creating sample appointments...");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Get all patients and doctors for appointments
+  const patients = await prisma.patients.findMany({
+    where: { isActive: true }
+  });
+
+  const doctorEmployees = await prisma.employees.findMany({
+    where: { 
+      consultationFee: { not: null },
+      isAvailable: true 
+    },
+    include: { user: true }
+  });
+
+  // Create appointments for today
+  let serialCounter = 1;
+  
+  // Use the first doctor as the assigner for all appointments
+  const assignerEmployee = doctorEmployees[0];
+  
+  for (const doctor of doctorEmployees) {
+    // Create 3-5 appointments per doctor
+    const appointmentCount = Math.floor(Math.random() * 3) + 3;
+    
+    for (let i = 0; i < appointmentCount; i++) {
+      const patient = patients[Math.floor(Math.random() * patients.length)];
+      const appointmentHour = 9 + Math.floor(Math.random() * 8); // 9 AM to 5 PM
+      const appointmentMinute = Math.floor(Math.random() * 60);
+      
+      const appointmentDate = new Date(today);
+      appointmentDate.setHours(appointmentHour, appointmentMinute, 0, 0);
+      
+      const statusOptions = ["WAITING", "IN_CONSULTATION", "COMPLETED"];
+      const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+      
+      const appointmentTypeOptions = ["NEW", "FOLLOWUP"];
+      const appointmentType = appointmentTypeOptions[Math.floor(Math.random() * appointmentTypeOptions.length)];
+      
+      await prisma.appointments.create({
+        data: {
+          patientId: patient.id,
+          doctorId: doctor.id,
+          assignedBy: assignerEmployee.id, // Use employee ID, not user ID
+          appointmentType: appointmentType as "NEW" | "FOLLOWUP",
+          chiefComplaint: "Regular checkup",
+          diagnosis: null,
+          appointmentDate,
+          appointmentMonth: format(appointmentDate, "yyyy-MM"),
+          serialNumber: serialCounter++,
+          queuePosition: serialCounter - 1,
+          status: status as "WAITING" | "IN_CONSULTATION" | "COMPLETED",
+        },
+      });
+    }
+  }
 
   console.log("✅ Seeding completed successfully!");
   console.log("\n📋 Login Credentials:");

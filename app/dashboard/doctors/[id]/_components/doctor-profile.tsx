@@ -92,7 +92,7 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
   return (
     <>
       <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
+        <Button variant="secondary" asChild className="mb-4">
           <Link href="/dashboard/doctors">
             <LuArrowLeft />
             Back to Doctors
@@ -209,13 +209,7 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
       {/* Recent Appointments Table */}
       <div className="rounded-xl border bg-card p-6">
         <h2 className="mb-6 text-lg font-medium">Recent Patient Appointments</h2>
-        {recentAppointments.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground">No recent appointments</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={recentAppointments} />
-        )}
+        <DataTable columns={columns} data={recentAppointments} />
       </div>
     </>
   );
