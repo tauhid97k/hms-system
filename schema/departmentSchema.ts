@@ -10,7 +10,7 @@ export const createDepartmentSchema = object({
     .min(2, "Code must be at least 2 characters")
     .max(20, "Code must not exceed 20 characters")
     .matches(/^[A-Z0-9_-]+$/, "Code must be uppercase letters, numbers, hyphens, or underscores only"),
-  description: string().nullable().max(500, "Description must not exceed 500 characters"),
+  description: string().max(500, "Description must not exceed 500 characters").optional(),
   isActive: boolean().default(true),
 })
 

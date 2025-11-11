@@ -34,10 +34,10 @@ export function DoctorForm({
   onCancel,
   isLoading,
 }: DoctorFormProps) {
-  const form = useForm<CreateDoctorFormData | UpdateDoctorFormData>({
+  const form = useForm({
     resolver: yupResolver(
-      mode === "create" ? createDoctorSchema : updateDoctorSchema,
-    ),
+      (mode === "create" ? createDoctorSchema : updateDoctorSchema) as any,
+    ) as any,
     defaultValues:
       mode === "create"
         ? {

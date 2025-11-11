@@ -16,10 +16,10 @@ export interface QueueUpdateEvent {
 export async function getQueueForDoctor(doctorId: string) {
   const todayStart = startOfDay(new Date());
 
-  return await prisma.visits.findMany({
+  return await prisma.appointments.findMany({
     where: {
       doctorId,
-      visitDate: { gte: todayStart },
+      appointmentDate: { gte: todayStart },
       status: { in: ["WAITING", "IN_CONSULTATION"] },
     },
     include: {
@@ -81,10 +81,10 @@ export async function emitQueueUpdate(doctorId: string) {
 export async function getNextSerialNumber(doctorId: string): Promise<number> {
   const todayStart = startOfDay(new Date());
 
-  const lastVisit = await prisma.visits.findFirst({
+  const lastVisit = await prisma.appointments.findFirst({
     where: {
       doctorId,
-      visitDate: { gte: todayStart },
+      appointmentDate: { gte: todayStart },
     },
     orderBy: { serialNumber: "desc" },
     select: { serialNumber: true },
@@ -99,10 +99,10 @@ export async function getNextQueuePosition(
 ): Promise<number> {
   const todayStart = startOfDay(new Date());
 
-  const count = await prisma.visits.count({
+  const count = await prisma.appointments.count({
     where: {
       doctorId,
-      visitDate: { gte: todayStart },
+      appointmentDate: { gte: todayStart },
       status: { in: ["WAITING", "IN_CONSULTATION"] },
     },
   });

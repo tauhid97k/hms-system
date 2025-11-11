@@ -4,7 +4,11 @@
       "Bash(ls:*)",
       "WebFetch(domain:www.better-auth.com)",
       "WebSearch",
-      "WebFetch(domain:orpc.unnoq.com)"
+      "WebFetch(domain:orpc.unnoq.com)",
+      "Bash(pnpm build:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm prisma migrate dev:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

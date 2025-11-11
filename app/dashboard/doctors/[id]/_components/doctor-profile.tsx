@@ -10,12 +10,12 @@ import { LuArrowLeft, LuPencil } from "react-icons/lu";
 import Link from "next/link";
 import { format } from "date-fns";
 
-type Visit = {
+type Appointment = {
   id: string;
   serialNumber: number;
   status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  visitType: "NEW" | "FOLLOWUP";
-  visitDate: Date;
+  appointmentType: "NEW" | "FOLLOWUP";
+  appointmentDate: Date;
   patient: {
     id: string;
     patientId: string;
@@ -27,18 +27,18 @@ type Visit = {
 
 type DoctorProfileProps = {
   doctor: Doctor;
-  recentVisits: Visit[];
+  recentAppointments: Appointment[];
 };
 
 const statusConfig = {
   WAITING: { label: "Waiting", variant: "secondary" as const },
   IN_CONSULTATION: { label: "In Consultation", variant: "default" as const },
-  COMPLETED: { label: "Completed", variant: "outline" as const },
+  COMPLETED: { label: "Completed", variant: "success" as const },
   CANCELLED: { label: "Cancelled", variant: "destructive" as const },
 };
 
-export function DoctorProfile({ doctor, recentVisits }: DoctorProfileProps) {
-  const columns: ColumnDef<Visit>[] = [
+export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps) {
+  const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "serialNumber",
       header: "Serial #",
@@ -60,13 +60,13 @@ export function DoctorProfile({ doctor, recentVisits }: DoctorProfileProps) {
       ),
     },
     {
-      accessorKey: "visitType",
+      accessorKey: "appointmentType",
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.visitType === "NEW" ? "default" : "secondary"}
+          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
         >
-          {row.original.visitType}
+          {row.original.appointmentType}
         </Badge>
       ),
     },
@@ -79,11 +79,11 @@ export function DoctorProfile({ doctor, recentVisits }: DoctorProfileProps) {
       },
     },
     {
-      accessorKey: "visitDate",
-      header: "Visit Date",
+      accessorKey: "appointmentDate",
+      header: "Appointment Date",
       cell: ({ row }) => (
         <div className="text-sm text-muted-foreground">
-          {format(new Date(row.original.visitDate), "MMM d, yyyy h:mm a")}
+          {format(new Date(row.original.appointmentDate), "MMM d, yyyy h:mm a")}
         </div>
       ),
     },
@@ -206,15 +206,15 @@ export function DoctorProfile({ doctor, recentVisits }: DoctorProfileProps) {
         </div>
       </div>
 
-      {/* Recent Visits Table */}
+      {/* Recent Appointments Table */}
       <div className="rounded-xl border bg-card p-6">
-        <h2 className="mb-6 text-lg font-medium">Recent Patient Visits</h2>
-        {recentVisits.length === 0 ? (
+        <h2 className="mb-6 text-lg font-medium">Recent Patient Appointments</h2>
+        {recentAppointments.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-muted-foreground">No recent visits</p>
+            <p className="text-muted-foreground">No recent appointments</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={recentVisits} />
+          <DataTable columns={columns} data={recentAppointments} />
         )}
       </div>
     </>

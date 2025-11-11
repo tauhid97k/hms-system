@@ -31,14 +31,14 @@ import {
   toggleDoctorAvailability,
 } from "./doctors"
 import {
-  getVisits,
-  getVisit,
-  createVisit,
-  updateVisit,
-  updateVisitStatus,
+  getAppointments,
+  getAppointment,
+  createAppointment,
+  updateAppointment,
+  updateAppointmentStatus,
   callNextPatient,
   getQueue,
-} from "./visits"
+} from "./appointments"
 import {
   getBills,
   getBill,
@@ -82,12 +82,12 @@ export const router = {
     delete: deleteDoctor,
     toggleAvailability: toggleDoctorAvailability,
   },
-  visits: {
-    getAll: getVisits,
-    getOne: getVisit,
-    create: createVisit,
-    update: updateVisit,
-    updateStatus: updateVisitStatus,
+  appointments: {
+    getAll: getAppointments,
+    getOne: getAppointment,
+    create: createAppointment,
+    update: updateAppointment,
+    updateStatus: updateAppointmentStatus,
     callNextPatient: callNextPatient,
     getQueue: getQueue,
   },

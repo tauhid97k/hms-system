@@ -25,7 +25,12 @@ import type { InferType } from "yup"
 
 const safeClient = createSafeClient(client)
 
-type CreateDepartmentFormData = InferType<typeof createDepartmentSchema>
+type CreateDepartmentFormData = {
+  name: string
+  code: string
+  description: string | undefined
+  isActive: boolean
+}
 
 type CreateDepartmentDialogProps = {
   open: boolean
@@ -39,17 +44,17 @@ export function CreateDepartmentDialog({
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm<CreateDepartmentFormData>({
+  const form = useForm({
     resolver: yupResolver(createDepartmentSchema),
     defaultValues: {
       name: "",
       code: "",
-      description: "",
+      description: undefined,
       isActive: true,
     },
   })
 
-  const onSubmit = async (data: CreateDepartmentFormData) => {
+  const onSubmit = async (data: any) => {
     setIsLoading(true)
     const { data: result, error } = await safeClient.departments.create(data)
 

@@ -14,10 +14,10 @@ export default async function QueuePage() {
   // Fetch queue data for each doctor with counts
   const queuesData = await Promise.all(
     doctorsData.data.map(async (doctor) => {
-      const queue = await client.visits.getQueue(doctor.id);
-      const waitingCount = queue.filter((v) => v.status === "WAITING").length;
+      const queue = await client.appointments.getQueue(doctor.id);
+      const waitingCount = queue.filter((a: any) => a.status === "WAITING").length;
       const consultingCount = queue.filter(
-        (v) => v.status === "IN_CONSULTATION"
+        (a: any) => a.status === "IN_CONSULTATION"
       ).length;
 
       return {

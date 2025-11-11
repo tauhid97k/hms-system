@@ -1,23 +1,23 @@
 import { notFound } from "next/navigation";
 import { client } from "@/lib/orpc";
-import { VisitTimeline } from "./_components/visit-timeline";
+import { AppointmentTimeline } from "./_components/appointment-timeline";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/date-format";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LuArrowLeft } from "react-icons/lu";
 
-type VisitJourneyPageProps = {
-  params: Promise<{ id: string; visitId: string }>;
+type AppointmentJourneyPageProps = {
+  params: Promise<{ id: string; appointmentId: string }>;
 };
 
-export default async function VisitJourneyPage({ params }: VisitJourneyPageProps) {
-  const { id, visitId } = await params;
+export default async function AppointmentJourneyPage({ params }: AppointmentJourneyPageProps) {
+  const { id, appointmentId } = await params;
 
   try {
-    const visit = await client.visits.getOne(visitId);
+    const appointment = await client.appointments.getOne(appointmentId);
 
-    if (!visit) {
+    if (!appointment) {
       notFound();
     }
 
@@ -28,8 +28,8 @@ export default async function VisitJourneyPage({ params }: VisitJourneyPageProps
       CANCELLED: { label: "Cancelled", variant: "secondary" },
     };
 
-    const status = statusMap[visit.status] || {
-      label: visit.status,
+    const status = statusMap[appointment.status] || {
+      label: appointment.status,
       variant: "secondary",
     };
 
@@ -43,25 +43,25 @@ export default async function VisitJourneyPage({ params }: VisitJourneyPageProps
             </Link>
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl font-medium">Visit Journey</h1>
+            <h1 className="text-2xl font-medium">Appointment Journey</h1>
             <p className="text-sm text-muted-foreground">
-              Complete timeline for {visit.patient.name} ({visit.patient.patientId})
+              Complete timeline for {appointment.patient.name} ({appointment.patient.patientId})
             </p>
           </div>
         </div>
 
-        {/* Visit Summary */}
+        {/* Appointment Summary */}
         <div className="rounded-xl border bg-card p-6">
-          <h2 className="mb-4 text-lg font-medium">Visit Summary</h2>
+          <h2 className="mb-4 text-lg font-medium">Appointment Summary</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="text-sm text-muted-foreground">Visit Date</p>
-              <p className="font-medium">{formatDateTime(visit.visitDate)}</p>
+              <p className="text-sm text-muted-foreground">Appointment Date</p>
+              <p className="font-medium">{formatDateTime(appointment.appointmentDate)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Department</p>
               <p className="font-medium">
-                {visit.department?.name || (
+                {(appointment as any).doctor?.employeeDepartments?.[0]?.department?.name || (
                   <span className="text-muted-foreground">Not assigned</span>
                 )}
               </p>
@@ -69,7 +69,7 @@ export default async function VisitJourneyPage({ params }: VisitJourneyPageProps
             <div>
               <p className="text-sm text-muted-foreground">Doctor</p>
               <p className="font-medium">
-                {visit.doctor?.user?.name || (
+                {appointment.doctor?.user?.name || (
                   <span className="text-muted-foreground">Not assigned</span>
                 )}
               </p>
@@ -78,16 +78,16 @@ export default async function VisitJourneyPage({ params }: VisitJourneyPageProps
               <p className="text-sm text-muted-foreground">Status</p>
               <Badge variant={status.variant}>{status.label}</Badge>
             </div>
-            {visit.chiefComplaint && (
+            {appointment.chiefComplaint && (
               <div className="sm:col-span-2">
                 <p className="text-sm text-muted-foreground">Chief Complaint</p>
-                <p className="font-medium">{visit.chiefComplaint}</p>
+                <p className="font-medium">{appointment.chiefComplaint}</p>
               </div>
             )}
-            {visit.diagnosis && (
+            {appointment.diagnosis && (
               <div className="sm:col-span-2">
                 <p className="text-sm text-muted-foreground">Diagnosis</p>
-                <p className="font-medium">{visit.diagnosis}</p>
+                <p className="font-medium">{appointment.diagnosis}</p>
               </div>
             )}
           </div>
@@ -96,7 +96,7 @@ export default async function VisitJourneyPage({ params }: VisitJourneyPageProps
         {/* Timeline */}
         <div>
           <h2 className="mb-4 text-lg font-medium">Patient Journey Timeline</h2>
-          <VisitTimeline journey={visit.journey} visit={visit} />
+          <AppointmentTimeline journey={(appointment as any).appointmentEvents || []} appointment={appointment} />
         </div>
       </div>
     );

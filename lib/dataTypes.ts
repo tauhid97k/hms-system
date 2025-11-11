@@ -112,7 +112,7 @@ export type Employee = {
     };
   }>;
   _count?: {
-    doctorVisits: number;
+    doctorAppointments: number;
   };
 };
 
@@ -124,7 +124,7 @@ export type Bill = {
   id: string;
   billNumber: string;
   patientId: string;
-  visitId: string | null;
+  appointmentId: string | null;
   billableType: string | null;
   billableId: string | null;
   totalAmount: number;
@@ -143,10 +143,10 @@ export type Bill = {
     name: string;
     phone: string;
   };
-  visit?: {
+  appointment?: {
     id: string;
     serialNumber: number;
-    visitType: string;
+    appointmentType: string;
     doctor: {
       id: string;
       user: {

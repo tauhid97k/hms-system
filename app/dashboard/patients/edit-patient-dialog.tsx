@@ -50,7 +50,7 @@ export function EditPatientDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<UpdatePatientFormData>({
-    resolver: yupResolver(updatePatientSchema),
+    resolver: yupResolver(updatePatientSchema) as any,
     defaultValues: {
       name: patient.name,
       age: patient.age,

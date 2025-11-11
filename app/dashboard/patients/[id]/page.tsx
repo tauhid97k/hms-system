@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { client } from "@/lib/orpc";
 import { PatientProfile } from "./_components/patient-profile";
-import { VisitHistoryTable } from "./_components/visit-history-table";
+import { AppointmentHistoryTable } from "./_components/appointment-history-table";
 
 type PatientPageProps = {
   params: Promise<{ id: string }>;
@@ -22,7 +22,7 @@ export default async function PatientPage({ params }: PatientPageProps) {
         {/* Patient Profile Section */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
-            <PatientProfile patient={patient} />
+            <PatientProfile patient={patient as any} />
           </div>
           <div className="lg:col-span-2 lg:flex">
             <div className="flex-1 rounded-xl border bg-card p-6">
@@ -88,10 +88,10 @@ export default async function PatientPage({ params }: PatientPageProps) {
           </div>
         </div>
 
-        {/* Visit History Section */}
+        {/* Appointment History Section */}
         <div>
-          <h2 className="mb-4 text-xl font-medium">Visit History</h2>
-          <VisitHistoryTable visits={patient.visits} patientId={patient.id} />
+          <h2 className="mb-4 text-xl font-medium">Appointment History</h2>
+          <AppointmentHistoryTable appointments={(patient as any).appointments || []} patientId={patient.id} />
         </div>
       </div>
     );

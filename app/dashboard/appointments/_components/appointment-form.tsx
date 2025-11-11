@@ -13,47 +13,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createVisitSchema } from "@/schema/visitSchema";
+import { createAppointmentSchema } from "@/schema/appointmentSchema";
 import type { InferType } from "yup";
 import type { Patient, Doctor } from "@/lib/dataTypes";
 
-type CreateVisitFormData = InferType<typeof createVisitSchema>;
+type CreateAppointmentFormData = InferType<typeof createAppointmentSchema>;
 
-type VisitFormProps = {
+type AppointmentFormProps = {
   patients: Patient[];
   doctors: Doctor[];
   currentEmployeeId: string;
-  onSubmit: (data: CreateVisitFormData, shouldPrint?: boolean) => Promise<void>;
+  onSubmit: (data: CreateAppointmentFormData, shouldPrint?: boolean) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
 };
 
-export function VisitForm({
+export function AppointmentForm({
   patients,
   doctors,
   currentEmployeeId,
   onSubmit,
   onCancel,
   isLoading,
-}: VisitFormProps) {
-  const form = useForm<CreateVisitFormData>({
-    resolver: yupResolver(createVisitSchema),
+}: AppointmentFormProps) {
+  const form = useForm<CreateAppointmentFormData>({
+    resolver: yupResolver(createAppointmentSchema) as any,
     defaultValues: {
       patientId: "",
       doctorId: "",
       assignedBy: currentEmployeeId,
-      visitType: "NEW",
+      appointmentType: "NEW",
       chiefComplaint: "",
     },
   });
 
-  const handleSubmit = async (data: CreateVisitFormData, shouldPrint = false) => {
+  const handleSubmit = async (data: CreateAppointmentFormData, shouldPrint = false) => {
     await onSubmit(data, shouldPrint);
     form.reset({
       patientId: "",
       doctorId: "",
       assignedBy: currentEmployeeId,
-      visitType: "NEW",
+      appointmentType: "NEW",
       chiefComplaint: "",
     });
   };
@@ -128,22 +128,22 @@ export function VisitForm({
           )}
         />
 
-        {/* Visit Type */}
+        {/* Appointment Type */}
         <Controller
-          name="visitType"
+          name="appointmentType"
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel>
-                Visit Type <span className="text-destructive">*</span>
+                Appointment Type <span className="text-destructive">*</span>
               </FieldLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select visit type" />
+                  <SelectValue placeholder="Select appointment type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NEW">New Visit</SelectItem>
-                  <SelectItem value="FOLLOWUP">Follow-up Visit</SelectItem>
+                  <SelectItem value="NEW">New Appointment</SelectItem>
+                  <SelectItem value="FOLLOWUP">Follow-up Appointment</SelectItem>
                 </SelectContent>
               </Select>
               <FieldError errors={[fieldState.error]} />
@@ -151,17 +151,17 @@ export function VisitForm({
           )}
         />
 
-        {/* Visit Reason */}
+        {/* Appointment Reason */}
         <Controller
           name="chiefComplaint"
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel>Visit Reason</FieldLabel>
+              <FieldLabel>Appointment Reason</FieldLabel>
               <Textarea
                 {...field}
                 value={field.value || ""}
-                placeholder="Patient's main reason for visit..."
+                placeholder="Patient's main reason for appointment..."
                 rows={4}
               />
               <FieldError errors={[fieldState.error]} />
@@ -189,7 +189,7 @@ export function VisitForm({
           Register & Print
         </Button>
         <Button type="submit" disabled={isLoading} isLoading={isLoading}>
-          Register Visit
+          Register Appointment
         </Button>
       </div>
     </form>

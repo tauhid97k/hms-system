@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Doctor } from "@/lib/dataTypes";
 
-type Visit = {
+type Appointment = {
   id: string;
   serialNumber: number;
   queuePosition: number;
   status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  visitType: "NEW" | "FOLLOWUP";
+  appointmentType: "NEW" | "FOLLOWUP";
   chiefComplaint: string | null;
-  visitDate: Date;
+  appointmentDate: Date;
   patient: {
     id: string;
     patientId: string;
@@ -25,7 +25,7 @@ type Visit = {
 
 type QueueDisplayProps = {
   doctor: Doctor;
-  initialQueue: Visit[];
+  initialQueue: Appointment[];
 };
 
 const statusColors = {
@@ -43,7 +43,7 @@ const statusLabels = {
 };
 
 export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
-  const [queue, setQueue] = useState<Visit[]>(initialQueue);
+  const [queue, setQueue] = useState<Appointment[]>(initialQueue);
 
   // TODO: Add WebSocket subscription for real-time updates
   useEffect(() => {
@@ -56,9 +56,9 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
     };
   }, [doctor.id]);
 
-  const waitingCount = queue.filter((v) => v.status === "WAITING").length;
+  const waitingCount = queue.filter((a) => a.status === "WAITING").length;
   const inConsultationCount = queue.filter(
-    (v) => v.status === "IN_CONSULTATION"
+    (a) => a.status === "IN_CONSULTATION"
   ).length;
 
   return (
@@ -90,52 +90,52 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
           </div>
         ) : (
           <div className="space-y-2">
-            {queue.map((visit) => (
+            {queue.map((appointment) => (
               <div
-                key={visit.id}
+                key={appointment.id}
                 className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 px-3 py-2 min-w-[60px]">
                     <span className="text-xs text-muted-foreground">Serial</span>
-                    <span className="text-lg font-bold">{visit.serialNumber}</span>
+                    <span className="text-lg font-bold">{appointment.serialNumber}</span>
                   </div>
                   <div className="flex flex-col items-center justify-center rounded-lg bg-muted px-3 py-2 min-w-[60px]">
                     <span className="text-xs text-muted-foreground">Queue</span>
-                    <span className="text-lg font-medium">{visit.queuePosition}</span>
+                    <span className="text-lg font-medium">{appointment.queuePosition}</span>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{visit.patient.name}</span>
+                      <span className="font-medium">{appointment.patient.name}</span>
                       <span className="text-sm text-muted-foreground">
-                        ({visit.patient.patientId})
+                        ({appointment.patient.patientId})
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{visit.patient.age}y</span>
+                      <span>{appointment.patient.age}y</span>
                       <span>•</span>
-                      <span>{visit.patient.gender || "N/A"}</span>
+                      <span>{appointment.patient.gender || "N/A"}</span>
                       <span>•</span>
-                      <span>{visit.patient.phone}</span>
+                      <span>{appointment.patient.phone}</span>
                     </div>
-                    {visit.chiefComplaint && (
+                    {appointment.chiefComplaint && (
                       <p className="text-sm text-muted-foreground line-clamp-1">
-                        {visit.chiefComplaint}
+                        {appointment.chiefComplaint}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
-                    variant={visit.visitType === "NEW" ? "default" : "secondary"}
+                    variant={appointment.appointmentType === "NEW" ? "default" : "secondary"}
                   >
-                    {visit.visitType}
+                    {appointment.appointmentType}
                   </Badge>
                   <Badge
-                    className={`${statusColors[visit.status]} text-white`}
+                    className={`${statusColors[appointment.status]} text-white`}
                     variant="default"
                   >
-                    {statusLabels[visit.status]}
+                    {statusLabels[appointment.status]}
                   </Badge>
                 </div>
               </div>

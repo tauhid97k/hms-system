@@ -1,19 +1,19 @@
 import { object, string } from "yup";
 
-// Create Visit Schema
-export const createVisitSchema = object({
+// Create Appointment Schema
+export const createAppointmentSchema = object({
   patientId: string().required("Patient is required"),
   doctorId: string().required("Doctor is required"),
   assignedBy: string().required("Assigned by is required"),
-  visitType: string()
-    .oneOf(["NEW", "FOLLOWUP"], "Invalid visit type")
-    .required("Visit type is required"),
+  appointmentType: string()
+    .oneOf(["NEW", "FOLLOWUP"], "Invalid appointment type")
+    .required("Appointment type is required"),
   chiefComplaint: string().optional().nullable(),
 });
 
-// Update Visit Schema
-export const updateVisitSchema = object({
-  id: string().required("Visit ID is required"),
+// Update Appointment Schema
+export const updateAppointmentSchema = object({
+  id: string().required("Appointment ID is required"),
   chiefComplaint: string().optional().nullable(),
   diagnosis: string().optional().nullable(),
   status: string()
@@ -24,9 +24,9 @@ export const updateVisitSchema = object({
     .optional(),
 });
 
-// Update Visit Status Schema (Quick status update)
-export const updateVisitStatusSchema = object({
-  id: string().required("Visit ID is required"),
+// Update Appointment Status Schema (Quick status update)
+export const updateAppointmentStatusSchema = object({
+  id: string().required("Appointment ID is required"),
   status: string()
     .oneOf(
       ["WAITING", "IN_CONSULTATION", "COMPLETED", "CANCELLED"],

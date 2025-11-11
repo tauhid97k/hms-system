@@ -41,7 +41,7 @@ export function PatientProfile({ patient }: PatientProfileProps) {
           <div className="mb-6 grid w-full grid-cols-3 gap-4 border-y py-4">
             <div>
               <p className="text-2xl font-bold">{patient._count.visits}</p>
-              <p className="text-xs text-muted-foreground">Visits</p>
+              <p className="text-xs text-muted-foreground">Appointments</p>
             </div>
             <div>
               <p className="text-2xl font-bold">{patient._count.documents}</p>

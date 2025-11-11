@@ -1,14 +1,14 @@
 import prisma from "./prisma";
-import { VisitEventType } from "@/prisma/generated/client";
+import { AppointmentEventType } from "../prisma/generated/client";
 
 /**
- * Visit Event Sourcing Utilities
+ * Appointment Event Sourcing Utilities
  *
- * This module provides helper functions for logging and querying visit events.
+ * This module provides helper functions for logging and querying appointment events.
  * Events are used to track the complete patient journey through the hospital.
  *
  * Event Flow Example:
- * 1. VISIT_REGISTERED → Patient registered at reception
+ * 1. APPOINTMENT_REGISTERED → Patient registered at reception
  * 2. QUEUE_JOINED → Patient added to doctor's queue
  * 3. CONSULTATION_BILLED → Consultation fee billed
  * 4. PAYMENT_RECEIVED → Payment completed
@@ -23,30 +23,30 @@ import { VisitEventType } from "@/prisma/generated/client";
  * 13. TEST_COMPLETED → Lab finished
  * 14. REPORT_GENERATED → Report ready
  * 15. REPORT_DELIVERED → Report given to patient
- * 16. VISIT_COMPLETED → Visit closed
+ * 16. APPOINTMENT_COMPLETED → Appointment closed
  */
 
 interface LogEventParams {
-  visitId: string;
-  eventType: VisitEventType;
+  appointmentId: string;
+  eventType: AppointmentEventType;
   performedBy?: string;
   description?: string;
   metadata?: Record<string, any>;
 }
 
 /**
- * Log a new visit event
+ * Log a new appointment event
  */
-export async function logVisitEvent({
-  visitId,
+export async function logAppointmentEvent({
+  appointmentId,
   eventType,
   performedBy,
   description,
   metadata,
 }: LogEventParams) {
-  return await prisma.visit_events.create({
+  return await prisma.appointment_events.create({
     data: {
-      visitId,
+      appointmentId,
       eventType,
       performedBy,
       description,
@@ -56,18 +56,22 @@ export async function logVisitEvent({
 }
 
 /**
- * Get all events for a visit (chronological order)
+ * Get all events for an appointment (chronological order)
  */
-export async function getVisitTimeline(visitId: string) {
-  return await prisma.visit_events.findMany({
-    where: { visitId },
+export async function getAppointmentTimeline(appointmentId: string) {
+  return await prisma.appointment_events.findMany({
+    where: { appointmentId },
     orderBy: { performedAt: "asc" },
     include: {
-      performedByUser: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+      performedByEmployee: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
       },
     },
@@ -75,15 +79,15 @@ export async function getVisitTimeline(visitId: string) {
 }
 
 /**
- * Get the latest event of a specific type for a visit
+ * Get the latest event of a specific type for an appointment
  */
 export async function getLatestEvent(
-  visitId: string,
-  eventType: VisitEventType,
+  appointmentId: string,
+  eventType: AppointmentEventType,
 ) {
-  return await prisma.visit_events.findFirst({
+  return await prisma.appointment_events.findFirst({
     where: {
-      visitId,
+      appointmentId,
       eventType,
     },
     orderBy: { performedAt: "desc" },
@@ -91,12 +95,12 @@ export async function getLatestEvent(
 }
 
 /**
- * Check if an event has occurred for a visit
+ * Check if an event has occurred for an appointment
  */
-export async function hasEvent(visitId: string, eventType: VisitEventType) {
-  const count = await prisma.visit_events.count({
+export async function hasEvent(appointmentId: string, eventType: AppointmentEventType) {
+  const count = await prisma.appointment_events.count({
     where: {
-      visitId,
+      appointmentId,
       eventType,
     },
   });
@@ -107,13 +111,13 @@ export async function hasEvent(visitId: string, eventType: VisitEventType) {
  * Get duration between two events (in minutes)
  */
 export async function getEventDuration(
-  visitId: string,
-  startEvent: VisitEventType,
-  endEvent: VisitEventType,
+  appointmentId: string,
+  startEvent: AppointmentEventType,
+  endEvent: AppointmentEventType,
 ): Promise<number | null> {
   const [start, end] = await Promise.all([
-    getLatestEvent(visitId, startEvent),
-    getLatestEvent(visitId, endEvent),
+    getLatestEvent(appointmentId, startEvent),
+    getLatestEvent(appointmentId, endEvent),
   ]);
 
   if (!start || !end) return null;
@@ -125,8 +129,8 @@ export async function getEventDuration(
 /**
  * Get formatted journey for display
  */
-export async function getVisitJourney(visitId: string) {
-  const events = await getVisitTimeline(visitId);
+export async function getAppointmentJourney(appointmentId: string) {
+  const events = await getAppointmentTimeline(appointmentId);
 
   return events.map((event) => {
     const metadata = event.metadata as Record<string, any> | null;
@@ -136,7 +140,7 @@ export async function getVisitJourney(visitId: string) {
       type: event.eventType,
       description: event.description || getEventDescription(event.eventType),
       timestamp: event.performedAt,
-      performedBy: event.performedByUser?.name || "System",
+      performedBy: event.performedByEmployee?.user?.name || "System",
       metadata,
       icon: getEventIcon(event.eventType),
       color: getEventColor(event.eventType),
@@ -147,10 +151,10 @@ export async function getVisitJourney(visitId: string) {
 /**
  * Helper: Get default description for event type
  */
-function getEventDescription(eventType: VisitEventType): string {
-  const descriptions: Record<VisitEventType, string> = {
-    VISIT_REGISTERED: "Patient registered for visit",
-    VISIT_ASSIGNED: "Visit assigned to doctor",
+function getEventDescription(eventType: AppointmentEventType): string {
+  const descriptions: Record<AppointmentEventType, string> = {
+    APPOINTMENT_REGISTERED: "Patient registered for appointment",
+    APPOINTMENT_ASSIGNED: "Appointment assigned to doctor",
     QUEUE_JOINED: "Patient joined the queue",
     QUEUE_CALLED: "Patient called from waiting area",
     QUEUE_SKIPPED: "Patient skipped their turn",
@@ -174,9 +178,9 @@ function getEventDescription(eventType: VisitEventType): string {
     REPORT_DELIVERED: "Report delivered to patient",
     DOCUMENT_UPLOADED: "Document uploaded",
     DOCUMENT_SHARED: "Document shared",
-    VISIT_COMPLETED: "Visit completed",
-    VISIT_CANCELLED: "Visit cancelled",
-    VISIT_RESCHEDULED: "Visit rescheduled",
+    APPOINTMENT_COMPLETED: "Appointment completed",
+    APPOINTMENT_CANCELLED: "Appointment cancelled",
+    APPOINTMENT_RESCHEDULED: "Appointment rescheduled",
     FOLLOWUP_SCHEDULED: "Follow-up scheduled",
     FOLLOWUP_REMINDER_SENT: "Follow-up reminder sent",
   };
@@ -187,10 +191,10 @@ function getEventDescription(eventType: VisitEventType): string {
 /**
  * Helper: Get icon for event type (Lucide React icon name)
  */
-function getEventIcon(eventType: VisitEventType): string {
-  const icons: Record<VisitEventType, string> = {
-    VISIT_REGISTERED: "ClipboardList",
-    VISIT_ASSIGNED: "UserCheck",
+function getEventIcon(eventType: AppointmentEventType): string {
+  const icons: Record<AppointmentEventType, string> = {
+    APPOINTMENT_REGISTERED: "ClipboardList",
+    APPOINTMENT_ASSIGNED: "UserCheck",
     QUEUE_JOINED: "Users",
     QUEUE_CALLED: "Bell",
     QUEUE_SKIPPED: "SkipForward",
@@ -214,9 +218,9 @@ function getEventIcon(eventType: VisitEventType): string {
     REPORT_DELIVERED: "Send",
     DOCUMENT_UPLOADED: "Upload",
     DOCUMENT_SHARED: "Share2",
-    VISIT_COMPLETED: "CheckCircle2",
-    VISIT_CANCELLED: "XCircle",
-    VISIT_RESCHEDULED: "Calendar",
+    APPOINTMENT_COMPLETED: "CheckCircle2",
+    APPOINTMENT_CANCELLED: "XCircle",
+    APPOINTMENT_RESCHEDULED: "Calendar",
     FOLLOWUP_SCHEDULED: "CalendarPlus",
     FOLLOWUP_REMINDER_SENT: "BellRing",
   };
@@ -227,7 +231,7 @@ function getEventIcon(eventType: VisitEventType): string {
 /**
  * Helper: Get color for event type
  */
-function getEventColor(eventType: VisitEventType): string {
+function getEventColor(eventType: AppointmentEventType): string {
   if (eventType.startsWith("PAYMENT")) return "green";
   if (eventType.includes("CANCELLED") || eventType.includes("SKIPPED"))
     return "red";
@@ -246,9 +250,9 @@ function getEventColor(eventType: VisitEventType): string {
 export async function logMultipleEvents(events: LogEventParams[]) {
   return await prisma.$transaction(
     events.map((event) =>
-      prisma.visit_events.create({
+      prisma.appointment_events.create({
         data: {
-          visitId: event.visitId,
+          appointmentId: event.appointmentId,
           eventType: event.eventType,
           performedBy: event.performedBy,
           description: event.description,

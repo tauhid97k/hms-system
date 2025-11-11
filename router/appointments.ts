@@ -2,11 +2,11 @@ import prisma from "@/lib/prisma";
 import { os } from "@orpc/server";
 import { string, number, object } from "yup";
 import {
-  createVisitSchema,
-  updateVisitSchema,
-  updateVisitStatusSchema,
+  createAppointmentSchema,
+  updateAppointmentSchema,
+  updateAppointmentStatusSchema,
   callNextPatientSchema,
-} from "@/schema/visitSchema";
+} from "@/schema/appointmentSchema";
 import {
   emitQueueUpdate,
   getNextSerialNumber,
@@ -15,14 +15,14 @@ import {
   getQueueForDoctor,
 } from "@/lib/queue-emitter";
 import { format } from "date-fns";
-import { VisitType, VisitStatus, VisitEventType } from "prisma/generated/client";
+import { AppointmentType, AppointmentStatus, AppointmentEventType } from "../prisma/generated/client";
 
-// Get all visits with pagination and filters
-export const getVisits = os
+// Get all appointments with pagination and filters
+export const getAppointments = os
   .route({
     method: "GET",
-    path: "/visits",
-    summary: "Get all visits",
+    path: "/appointments",
+    summary: "Get all appointments",
   })
   .input(
     object({
@@ -33,11 +33,11 @@ export const getVisits = os
       status: string()
         .oneOf(["WAITING", "IN_CONSULTATION", "COMPLETED", "CANCELLED"])
         .optional(),
-      visitDate: string().optional(),
+      appointmentDate: string().optional(),
     })
   )
   .handler(async ({ input }) => {
-    const { page, limit, patientId, doctorId, status, visitDate } = input;
+    const { page, limit, patientId, doctorId, status, appointmentDate } = input;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -45,15 +45,15 @@ export const getVisits = os
     if (patientId) where.patientId = patientId;
     if (doctorId) where.doctorId = doctorId;
     if (status) where.status = status;
-    if (visitDate) {
-      const date = new Date(visitDate);
+    if (appointmentDate) {
+      const date = new Date(appointmentDate);
       const startOfDay = new Date(date.setHours(0, 0, 0, 0));
       const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-      where.visitDate = { gte: startOfDay, lte: endOfDay };
+      where.appointmentDate = { gte: startOfDay, lte: endOfDay };
     }
 
-    const [visits, total] = await Promise.all([
-      prisma.visits.findMany({
+    const [appointments, total] = await Promise.all([
+      prisma.appointments.findMany({
         where,
         include: {
           patient: {
@@ -88,15 +88,15 @@ export const getVisits = os
             },
           },
         },
-        orderBy: { visitDate: "desc" },
+        orderBy: { appointmentDate: "desc" },
         skip,
         take: limit,
       }),
-      prisma.visits.count({ where }),
+      prisma.appointments.count({ where }),
     ]);
 
     return {
-      data: visits,
+      data: appointments,
       meta: {
         page,
         limit,
@@ -105,16 +105,16 @@ export const getVisits = os
     };
   });
 
-// Get visit by ID with full details
-export const getVisit = os
+// Get appointment by ID with full details
+export const getAppointment = os
   .route({
     method: "GET",
-    path: "/visits/:id",
-    summary: "Get visit by ID",
+    path: "/appointments/:id",
+    summary: "Get appointment by ID",
   })
   .input(string().required())
   .handler(async ({ input }) => {
-    const visit = await prisma.visits.findUnique({
+    const appointment = await prisma.appointments.findUnique({
       where: { id: input },
       include: {
         patient: true,
@@ -154,7 +154,7 @@ export const getVisit = os
             },
           },
         },
-        visitEvents: {
+        appointmentEvents: {
           include: {
             performedByEmployee: {
               include: {
@@ -173,21 +173,21 @@ export const getVisit = os
       },
     });
 
-    if (!visit) {
-      throw new Error("Visit not found");
+    if (!appointment) {
+      throw new Error("Appointment not found");
     }
 
-    return visit;
+    return appointment;
   });
 
-// Create visit with auto-billing
-export const createVisit = os
+// Create appointment with auto-billing
+export const createAppointment = os
   .route({
     method: "POST",
-    path: "/visits",
-    summary: "Create a new visit",
+    path: "/appointments",
+    summary: "Create a new appointment",
   })
-  .input(createVisitSchema)
+  .input(createAppointmentSchema)
   .handler(async ({ input }) => {
     // Get doctor fees
     const doctor = await prisma.employees.findUnique({
@@ -210,23 +210,23 @@ export const createVisit = os
     // Get next serial number and queue position
     const serialNumber = await getNextSerialNumber(input.doctorId);
     const queuePosition = await getNextQueuePosition(input.doctorId);
-    const visitMonth = format(new Date(), "yyyy-MM");
+    const appointmentMonth = format(new Date(), "yyyy-MM");
 
-    // Transaction: Create visit + bill + events
+    // Transaction: Create appointment + bill + events
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create visit
-      const visit = await tx.visits.create({
+      // 1. Create appointment
+      const appointment = await tx.appointments.create({
         data: {
           patientId: input.patientId,
           doctorId: input.doctorId,
           assignedBy: input.assignedBy,
-          visitType: input.visitType as VisitType,
+          appointmentType: input.appointmentType as AppointmentType,
           chiefComplaint: input.chiefComplaint,
           serialNumber,
           queuePosition,
-          status: VisitStatus.WAITING,
-          visitDate: new Date(),
-          visitMonth,
+          status: AppointmentStatus.WAITING,
+          appointmentDate: new Date(),
+          appointmentMonth,
         },
       });
 
@@ -241,9 +241,9 @@ export const createVisit = os
         data: {
           billNumber,
           patientId: input.patientId,
-          visitId: visit.id,
-          billableType: "visit",
-          billableId: visit.id,
+          appointmentId: appointment.id,
+          billableType: "appointment",
+          billableId: appointment.id,
           totalAmount: totalFee,
           dueAmount: totalFee,
           paidAmount: 0,
@@ -257,7 +257,7 @@ export const createVisit = os
         data: {
           billId: bill.id,
           itemableType: "consultation",
-          itemableId: visit.id,
+          itemableId: appointment.id,
           itemName: `Consultation - Dr. ${doctor.user.name}`,
           quantity: 1,
           unitPrice: totalFee,
@@ -266,23 +266,23 @@ export const createVisit = os
       });
 
       // 4. Log events
-      await tx.visit_events.createMany({
+      await tx.appointment_events.createMany({
         data: [
           {
-            visitId: visit.id,
-            eventType: VisitEventType.VISIT_REGISTERED,
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.APPOINTMENT_REGISTERED,
             performedBy: input.assignedBy,
-            description: "Visit registered",
+            description: "Appointment registered",
           },
           {
-            visitId: visit.id,
-            eventType: VisitEventType.QUEUE_JOINED,
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.QUEUE_JOINED,
             performedBy: input.assignedBy,
             description: `Joined queue at position ${queuePosition}`,
           },
           {
-            visitId: visit.id,
-            eventType: VisitEventType.CONSULTATION_BILLED,
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.CONSULTATION_BILLED,
             performedBy: input.assignedBy,
             description: `Billed ${totalFee}`,
             metadata: {
@@ -294,48 +294,48 @@ export const createVisit = os
         ],
       });
 
-      return { visit, bill };
+      return { appointment, bill };
     });
 
     // Emit queue update (non-blocking)
     await emitQueueUpdate(input.doctorId);
 
-    return result.visit;
+    return result.appointment;
   });
 
-// Update visit status
-export const updateVisitStatus = os
+// Update appointment status
+export const updateAppointmentStatus = os
   .route({
     method: "PATCH",
-    path: "/visits/:id/status",
-    summary: "Update visit status",
+    path: "/appointments/:id/status",
+    summary: "Update appointment status",
   })
-  .input(updateVisitStatusSchema)
+  .input(updateAppointmentStatusSchema)
   .handler(async ({ input }) => {
-    // Update visit
-    const visit = await prisma.visits.update({
+    // Update appointment
+    const appointment = await prisma.appointments.update({
       where: { id: input.id },
       data: {
-        status: input.status as VisitStatus,
+        status: input.status as AppointmentStatus,
         ...(input.status === "IN_CONSULTATION" && { entryTime: new Date() }),
         ...(input.status === "COMPLETED" && { exitTime: new Date() }),
       },
     });
 
     // Map status to event type
-    const eventTypeMap: Record<string, VisitEventType> = {
-      IN_CONSULTATION: VisitEventType.ENTERED_ROOM,
-      COMPLETED: VisitEventType.CONSULTATION_COMPLETED,
-      CANCELLED: VisitEventType.VISIT_CANCELLED,
+    const eventTypeMap: Record<string, AppointmentEventType> = {
+      IN_CONSULTATION: AppointmentEventType.ENTERED_ROOM,
+      COMPLETED: AppointmentEventType.CONSULTATION_COMPLETED,
+      CANCELLED: AppointmentEventType.APPOINTMENT_CANCELLED,
     };
 
     const eventType = eventTypeMap[input.status];
 
     // Log event
     if (eventType) {
-      await prisma.visit_events.create({
+      await prisma.appointment_events.create({
         data: {
-          visitId: input.id,
+          appointmentId: input.id,
           eventType: eventType,
           performedBy: input.performedBy,
           description: `Status changed to ${input.status}`,
@@ -344,16 +344,16 @@ export const updateVisitStatus = os
     }
 
     // Emit queue update
-    await emitQueueUpdate(visit.doctorId);
+    await emitQueueUpdate(appointment.doctorId);
 
-    return visit;
+    return appointment;
   });
 
 // Call next patient
 export const callNextPatient = os
   .route({
     method: "POST",
-    path: "/visits/queue/call-next",
+    path: "/appointments/queue/call-next",
     summary: "Call next patient in queue",
   })
   .input(callNextPatientSchema)
@@ -362,33 +362,33 @@ export const callNextPatient = os
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const nextVisit = await prisma.visits.findFirst({
+    const nextAppointment = await prisma.appointments.findFirst({
       where: {
         doctorId: input.doctorId,
-        visitDate: { gte: todayStart },
+        appointmentDate: { gte: todayStart },
         status: "WAITING",
       },
       orderBy: { queuePosition: "asc" },
     });
 
-    if (!nextVisit) {
+    if (!nextAppointment) {
       throw new Error("No patients waiting");
     }
 
     // Update status
-    const updated = await prisma.visits.update({
-      where: { id: nextVisit.id },
+    const updated = await prisma.appointments.update({
+      where: { id: nextAppointment.id },
       data: {
-        status: VisitStatus.IN_CONSULTATION,
+        status: AppointmentStatus.IN_CONSULTATION,
         entryTime: new Date(),
       },
     });
 
     // Log event
-    await prisma.visit_events.create({
+    await prisma.appointment_events.create({
       data: {
-        visitId: updated.id,
-        eventType: VisitEventType.QUEUE_CALLED,
+        appointmentId: updated.id,
+        eventType: AppointmentEventType.QUEUE_CALLED,
         performedBy: input.performedBy,
         description: "Patient called from queue",
       },
@@ -400,41 +400,41 @@ export const callNextPatient = os
     return updated;
   });
 
-// Update visit (diagnosis, complaint, etc.)
-export const updateVisit = os
+// Update appointment (diagnosis, complaint, etc.)
+export const updateAppointment = os
   .route({
     method: "PUT",
-    path: "/visits",
-    summary: "Update visit details",
+    path: "/appointments",
+    summary: "Update appointment details",
   })
-  .input(updateVisitSchema)
+  .input(updateAppointmentSchema)
   .handler(async ({ input }) => {
     const { id, ...data } = input;
 
-    const visit = await prisma.visits.update({
+    const appointment = await prisma.appointments.update({
       where: { id },
       data: {
         ...(data.chiefComplaint !== undefined && {
           chiefComplaint: data.chiefComplaint,
         }),
         ...(data.diagnosis !== undefined && { diagnosis: data.diagnosis }),
-        ...(data.status && { status: data.status as VisitStatus }),
+        ...(data.status && { status: data.status as AppointmentStatus }),
       },
     });
 
     // If status changed, emit queue update
     if (data.status) {
-      await emitQueueUpdate(visit.doctorId);
+      await emitQueueUpdate(appointment.doctorId);
     }
 
-    return visit;
+    return appointment;
   });
 
 // Get queue for a specific doctor
 export const getQueue = os
   .route({
     method: "GET",
-    path: "/visits/queue/:doctorId",
+    path: "/appointments/queue/:doctorId",
     summary: "Get queue for a specific doctor",
   })
   .input(string().required())

@@ -17,7 +17,7 @@ export default function NewPatientPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: CreatePatientFormData) => {
+  const handleSubmit = async (data: any) => {
     setIsLoading(true);
     const { data: result, error } = await safeClient.patients.create(data);
 

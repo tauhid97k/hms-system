@@ -27,12 +27,12 @@ enum BloodGroup {
   O_NEGATIVE
 }
 
-enum VisitType {
+enum AppointmentType {
   NEW
   FOLLOWUP
 }
 
-enum VisitStatus {
+enum AppointmentStatus {
   WAITING
   IN_CONSULTATION
   COMPLETED
@@ -73,10 +73,10 @@ enum NotificationType {
   SYSTEM
 }
 
-enum VisitEventType {
-  // Visit Registration
-  VISIT_REGISTERED
-  VISIT_ASSIGNED
+enum AppointmentEventType {
+  // Appointment Registration
+  APPOINTMENT_REGISTERED
+  APPOINTMENT_ASSIGNED
 
   // Queue Management
   QUEUE_JOINED
@@ -113,10 +113,10 @@ enum VisitEventType {
   DOCUMENT_UPLOADED
   DOCUMENT_SHARED
 
-  // Visit Completion
-  VISIT_COMPLETED
-  VISIT_CANCELLED
-  VISIT_RESCHEDULED
+  // Appointment Completion
+  APPOINTMENT_COMPLETED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
 
   // Follow-up
   FOLLOWUP_SCHEDULED
@@ -319,14 +319,14 @@ model employees {
   user                    users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   employeeDepartments     employee_departments[]
   employeeSpecializations employee_specializations[]
-  doctorVisits            visits[]                   @relation("DoctorVisits")
-  assignedVisits          visits[]                   @relation("AssignedVisits")
+  doctorAppointments      appointments[]             @relation("DoctorAppointments")
+  assignedAppointments    appointments[]             @relation("AssignedAppointments")
   prescriptions           prescriptions[]
   testResults             test_results[]             @relation("Technician")
   reviewedTests           test_results[]             @relation("Reviewer")
   orderedTests            test_orders[]              @relation("OrderedBy")
   receivedPayments        payments[]
-  visitEvents             visit_events[]             @relation("PerformedBy")
+  appointmentEvents       appointment_events[]       @relation("PerformedBy")
 
   @@index([userId])
   @@index([isAvailable])
@@ -382,9 +382,9 @@ model patients {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  visits    visits[]
-  documents documents[]
-  bills     bills[]
+  appointments appointments[]
+  documents    documents[]
+  bills        bills[]
 
   @@index([patientId])
   @@index([phone])
@@ -393,71 +393,71 @@ model patients {
   @@index([createdAt]) // For recent patients
 }
 
-// ============= VISITS & APPOINTMENTS =============
+// ============= APPOINTMENTS =============
 
-model visits {
+model appointments {
   id             String      @id @default(ulid())
   patientId      String
   doctorId       String // References employees.id
   assignedBy     String // References employees.id
-  visitType      VisitType
-  chiefComplaint String?     @db.Text
-  diagnosis      String?     @db.Text
-  serialNumber   Int
-  queuePosition  Int
-  status         VisitStatus @default(WAITING)
+  appointmentType AppointmentType
+  chiefComplaint  String?          @db.Text
+  diagnosis       String?          @db.Text
+  serialNumber    Int
+  queuePosition   Int
+  status          AppointmentStatus @default(WAITING)
   entryTime      DateTime?
   exitTime       DateTime?
-  visitDate      DateTime    @default(now())
-  visitMonth     String // YYYY-MM for partitioning/archiving
+  appointmentDate DateTime    @default(now())
+  appointmentMonth String // YYYY-MM for partitioning/archiving
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   patient            patients        @relation(fields: [patientId], references: [id])
-  doctor             employees       @relation("DoctorVisits", fields: [doctorId], references: [id])
-  assignedByEmployee employees       @relation("AssignedVisits", fields: [assignedBy], references: [id])
+  doctor             employees       @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  assignedByEmployee employees       @relation("AssignedAppointments", fields: [assignedBy], references: [id])
   bills              bills[]
   prescriptions      prescriptions[]
   testOrders         test_orders[]
-  visitEvents        visit_events[]
+  appointmentEvents  appointment_events[]
 
-  @@index([doctorId, visitDate, queuePosition]) // Queue management
-  @@index([patientId, visitDate]) // Patient history
-  @@index([status, visitDate]) // Today's waiting/in-consultation
-  @@index([visitDate]) // Daily operations
-  @@index([visitMonth]) // Monthly partitioning
-  @@index([createdAt]) // Recent visits
+  @@index([doctorId, appointmentDate, queuePosition]) // Queue management
+  @@index([patientId, appointmentDate]) // Patient history
+  @@index([status, appointmentDate]) // Today's waiting/in-consultation
+  @@index([appointmentDate]) // Daily operations
+  @@index([appointmentMonth]) // Monthly partitioning
+  @@index([createdAt]) // Recent appointments
 }
 
-// ============= VISIT EVENTS (Event Sourcing Pattern) =============
+// ============= APPOINTMENT EVENTS (Event Sourcing Pattern) =============
 
-model visit_events {
-  id          String         @id @default(ulid())
-  visitId     String
-  eventType   VisitEventType
+model appointment_events {
+  id            String         @id @default(ulid())
+  appointmentId String
+  eventType   AppointmentEventType
   description String?
   metadata    Json? // Flexible data: billId, testId, fileUrl, duration, etc.
   performedBy String? // References employees.id
   performedAt DateTime       @default(now())
   createdAt   DateTime       @default(now())
 
-  visit               visits     @relation(fields: [visitId], references: [id], onDelete: Cascade)
-  performedByEmployee employees? @relation("PerformedBy", fields: [performedBy], references: [id])
+  appointment         appointments @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  performedByEmployee employees?   @relation("PerformedBy", fields: [performedBy], references: [id])
 
-  @@index([visitId, performedAt]) // Timeline reconstruction
+  @@index([appointmentId, performedAt]) // Timeline reconstruction
   @@index([eventType]) // Event type filtering
   @@index([performedAt]) // Chronological queries
-  @@index([visitId, eventType]) // Specific event lookup
+  @@index([appointmentId, eventType]) // Specific event lookup
 }
 
 // ============= BILLING (Polymorphic-like Design) =============
 
 model bills {
   id           String     @id @default(ulid())
-  billNumber   String     @unique
-  patientId    String
-  visitId      String?
-  billableType String? // "visit", "test", "medicine", "other" - flexible for future
+  billNumber      String     @unique
+  patientId       String
+  appointmentId   String?
+  billableType String? // "appointment", "test", "medicine", "other" - flexible for future
   billableId   String? // ID of the billable entity
   totalAmount  Float
   paidAmount   Float      @default(0)
@@ -470,14 +470,14 @@ model bills {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  patient   patients     @relation(fields: [patientId], references: [id])
-  visit     visits?      @relation(fields: [visitId], references: [id])
+  patient     patients      @relation(fields: [patientId], references: [id])
+  appointment appointments? @relation(fields: [appointmentId], references: [id])
   billItems bill_items[]
   payments  payments[]
 
   @@index([billNumber])
   @@index([patientId, status]) // Patient's pending bills
-  @@index([visitId])
+  @@index([appointmentId])
   @@index([status, billingDate]) // Pending bills by date
   @@index([billableType, billableId]) // Polymorphic lookup
   @@index([billingDate]) // Daily billing reports
@@ -560,18 +560,18 @@ model medicine_instructions {
 }
 
 model prescriptions {
-  id           String    @id @default(ulid())
-  visitId      String
+  id            String    @id @default(ulid())
+  appointmentId String
   doctorId     String // References employees.id
   notes        String?
   followUpDate DateTime?
   createdAt    DateTime  @default(now())
 
-  visit  visits               @relation(fields: [visitId], references: [id])
-  doctor employees            @relation(fields: [doctorId], references: [id])
-  items  prescription_items[]
+  appointment appointments         @relation(fields: [appointmentId], references: [id])
+  doctor      employees            @relation(fields: [doctorId], references: [id])
+  items       prescription_items[]
 
-  @@index([visitId])
+  @@index([appointmentId])
   @@index([doctorId])
   @@index([createdAt])
 }
@@ -648,8 +648,8 @@ model test_templates {
 }
 
 model test_orders {
-  id         String     @id @default(ulid())
-  visitId    String
+  id            String     @id @default(ulid())
+  appointmentId String
   testTypeId String
   orderedBy  String // References employees.id
   status     TestStatus @default(ORDERED)
@@ -657,12 +657,12 @@ model test_orders {
   orderedAt  DateTime   @default(now())
   billId     String?
 
-  visit             visits        @relation(fields: [visitId], references: [id])
+  appointment       appointments  @relation(fields: [appointmentId], references: [id])
   testType          test_types    @relation(fields: [testTypeId], references: [id])
   orderedByEmployee employees     @relation("OrderedBy", fields: [orderedBy], references: [id])
   result            test_results?
 
-  @@index([visitId])
+  @@index([appointmentId])
   @@index([testTypeId, status]) // Lab queue
   @@index([status, orderedAt]) // Workflow status
   @@index([orderedAt]) // Recent orders
@@ -695,9 +695,9 @@ model test_results {
 // ============= DOCUMENTS =============
 
 model documents {
-  id         String   @id @default(ulid())
-  patientId  String
-  visitId    String?
+  id            String   @id @default(ulid())
+  patientId     String
+  appointmentId String?
   fileType   String // "xray", "scan", "report", "prescription"
   fileName   String
   fileUrl    String
@@ -709,7 +709,7 @@ model documents {
   uploadedByUser users    @relation(fields: [uploadedBy], references: [id])
 
   @@index([patientId])
-  @@index([visitId])
+  @@index([appointmentId])
   @@index([fileType])
   @@index([uploadedAt])
 }

@@ -73,9 +73,7 @@ export const getDepartment = os
       include: {
         _count: {
           select: {
-            users: true,
-            doctors: true,
-            labs: true,
+            employeeDepartments: true,
           },
         },
       },
@@ -204,9 +202,7 @@ export const deleteDepartment = os
       include: {
         _count: {
           select: {
-            users: true,
-            doctors: true,
-            labs: true,
+            employeeDepartments: true,
           },
         },
       },
@@ -217,8 +213,7 @@ export const deleteDepartment = os
     }
 
     // Check if department has any associations
-    const totalAssociations =
-      department._count.users + department._count.doctors + department._count.labs
+    const totalAssociations = department._count.employeeDepartments
 
     if (totalAssociations > 0) {
       throw new Error(

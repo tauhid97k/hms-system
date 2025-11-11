@@ -10,7 +10,7 @@ async function main() {
   console.log("🗑️  Clearing existing data...");
 
   // Clear in correct order (respecting foreign keys)
-  await prisma.visit_events.deleteMany();
+  await prisma.appointment_events.deleteMany();
   await prisma.prescription_items.deleteMany();
   await prisma.prescriptions.deleteMany();
   await prisma.test_results.deleteMany();
@@ -18,7 +18,7 @@ async function main() {
   await prisma.bill_items.deleteMany();
   await prisma.payments.deleteMany();
   await prisma.bills.deleteMany();
-  await prisma.visits.deleteMany();
+  await prisma.appointments.deleteMany();
   await prisma.employee_specializations.deleteMany();
   await prisma.employee_departments.deleteMany();
   await prisma.employees.deleteMany();

@@ -114,7 +114,7 @@ export const getDoctors = os
           },
           _count: {
             select: {
-              doctorVisits: true,
+              doctorAppointments: true,
             },
           },
         },
@@ -170,7 +170,7 @@ export const getDoctor = os
         },
         _count: {
           select: {
-            doctorVisits: true,
+            doctorAppointments: true,
           },
         },
       },
@@ -467,7 +467,7 @@ export const updateDoctor = os
           },
           _count: {
             select: {
-              doctorVisits: true,
+              doctorAppointments: true,
             },
           },
         },
@@ -491,7 +491,7 @@ export const deleteDoctor = os
       include: {
         _count: {
           select: {
-            doctorVisits: true,
+            doctorAppointments: true,
           },
         },
       },
@@ -502,9 +502,9 @@ export const deleteDoctor = os
     }
 
     // Check if doctor has visits
-    if (employee._count.doctorVisits > 0) {
+    if (employee._count.doctorAppointments > 0) {
       throw new Error(
-        `Cannot delete doctor. Doctor has ${employee._count.doctorVisits} associated visits. Please deactivate the doctor instead.`,
+        `Cannot delete doctor. Doctor has ${employee._count.doctorAppointments} associated visits. Please deactivate the doctor instead.`,
       );
     }
 

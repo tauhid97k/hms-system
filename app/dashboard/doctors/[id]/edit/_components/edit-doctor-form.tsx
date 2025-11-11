@@ -24,7 +24,7 @@ export function EditDoctorForm({ doctor, departments, specializations }: EditDoc
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: UpdateDoctorFormData) => {
+  const handleSubmit = async (data: any) => {
     setIsLoading(true);
     const { error } = await safeClient.doctors.update(data);
 

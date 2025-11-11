@@ -47,9 +47,9 @@ export const menuList: MenuItem[] = [
   },
   {
     id: 4,
-    title: "Visits",
+    title: "Appointments",
     icon: <LuClipboardList className="icon" />,
-    url: "/dashboard/visits",
+    url: "/dashboard/appointments",
   },
   {
     id: 5,

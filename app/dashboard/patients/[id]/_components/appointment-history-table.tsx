@@ -16,28 +16,28 @@ import { ColumnDef } from "@tanstack/react-table";
 import { LuEllipsisVertical, LuEye } from "react-icons/lu";
 import Link from "next/link";
 
-// Simplified Visit type for the table
-type Visit = {
+// Simplified Appointment type for the table
+type Appointment = {
   id: string;
-  visitDate: Date;
+  appointmentDate: Date;
   status: string;
   chiefComplaint: string | null;
   diagnosis: string | null;
   createdAt: Date;
 };
 
-type VisitHistoryTableProps = {
-  visits: Visit[];
+type AppointmentHistoryTableProps = {
+  appointments: Appointment[];
   patientId: string;
 };
 
-export function VisitHistoryTable({ visits, patientId }: VisitHistoryTableProps) {
-  const columns: ColumnDef<Visit>[] = [
+export function AppointmentHistoryTable({ appointments, patientId }: AppointmentHistoryTableProps) {
+  const columns: ColumnDef<Appointment>[] = [
     {
-      accessorKey: "visitDate",
+      accessorKey: "appointmentDate",
       header: "Date",
       cell: ({ row }) => (
-        <div className="text-sm">{formatDateTime(row.original.visitDate)}</div>
+        <div className="text-sm">{formatDateTime(row.original.appointmentDate)}</div>
       ),
     },
     {
@@ -100,7 +100,7 @@ export function VisitHistoryTable({ visits, patientId }: VisitHistoryTableProps)
     {
       id: "actions",
       cell: ({ row }) => {
-        const visit = row.original;
+        const appointment = row.original;
 
         return (
           <DropdownMenu>
@@ -114,7 +114,7 @@ export function VisitHistoryTable({ visits, patientId }: VisitHistoryTableProps)
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/patients/${patientId}/visits/${visit.id}`}>
+                <Link href={`/dashboard/patients/${patientId}/appointments/${appointment.id}`}>
                   <LuEye />
                   View Journey
                 </Link>
@@ -126,17 +126,17 @@ export function VisitHistoryTable({ visits, patientId }: VisitHistoryTableProps)
     },
   ];
 
-  if (visits.length === 0) {
+  if (appointments.length === 0) {
     return (
       <div className="rounded-xl border bg-card p-12 text-center">
-        <p className="text-muted-foreground">No visit history found</p>
+        <p className="text-muted-foreground">No appointment history found</p>
       </div>
     );
   }
 
   return (
     <div className="rounded-xl border bg-card p-6">
-      <DataTable columns={columns} data={visits} />
+      <DataTable columns={columns} data={appointments} />
     </div>
   );
 }

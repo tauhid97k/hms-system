@@ -18,12 +18,12 @@ export default async function DoctorProfilePage({
     notFound();
   }
 
-  // Fetch recent visits for this doctor
-  const visitsData = await client.visits.getAll({
+  // Fetch recent appointments for this doctor
+  const appointmentsData = await client.appointments.getAll({
     page: 1,
     limit: 10,
     doctorId: id,
   });
 
-  return <DoctorProfile doctor={doctor} recentVisits={visitsData.data} />;
+  return <DoctorProfile doctor={doctor} recentAppointments={appointmentsData.data} />;
 }

@@ -144,7 +144,7 @@ export const getPatient = os
     const patient = await prisma.patients.findUnique({
       where: { id: input },
       include: {
-        visits: {
+        appointments: {
           take: 10,
           orderBy: { createdAt: "desc" },
         },
@@ -154,7 +154,7 @@ export const getPatient = os
         },
         _count: {
           select: {
-            visits: true,
+            appointments: true,
             documents: true,
             bills: true,
           },
@@ -268,7 +268,7 @@ export const deletePatient = os
       include: {
         _count: {
           select: {
-            visits: true,
+            appointments: true,
             bills: true,
             documents: true,
           },

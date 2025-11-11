@@ -248,10 +248,10 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       ),
     },
     {
-      accessorKey: "_count.doctorVisits",
-      header: "Visits",
+      accessorKey: "_count.doctorAppointments",
+      header: "Appointments",
       cell: ({ row }) => (
-        <div className="text-sm">{row.original._count?.doctorVisits || 0}</div>
+        <div className="text-sm">{row.original._count?.doctorAppointments || 0}</div>
       ),
     },
     {

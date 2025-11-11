@@ -37,7 +37,7 @@ export function PatientForm({
   isLoading,
 }: PatientFormProps) {
   const form = useForm<CreatePatientFormData | UpdatePatientFormData>({
-    resolver: yupResolver(mode === "create" ? createPatientSchema : updatePatientSchema),
+    resolver: yupResolver((mode === "create" ? createPatientSchema : updatePatientSchema) as any) as any,
     defaultValues: mode === "create"
       ? {
           name: "",

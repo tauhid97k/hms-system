@@ -23,7 +23,7 @@ export function NewDoctorForm({ departments, specializations }: NewDoctorFormPro
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: CreateDoctorFormData) => {
+  const handleSubmit = async (data: any) => {
     setIsLoading(true);
     const { data: result, error } = await safeClient.doctors.create(data);
 

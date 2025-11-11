@@ -26,7 +26,7 @@ export default async function EditDoctorPage({ params }: EditDoctorPageProps) {
         <div>
           <h1 className="text-2xl font-medium">Edit Doctor</h1>
           <p className="text-sm text-muted-foreground">
-            Update doctor information for {doctor.user?.name}
+            Update doctor information for {(doctor as any).user?.name}
           </p>
         </div>
 

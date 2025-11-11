@@ -1,18 +1,18 @@
 import { client } from "@/lib/orpc";
 import { getSession } from "@/lib/auth";
-import { NewVisitForm } from "./_components/new-visit-form";
+import { NewAppointmentForm } from "./_components/new-appointment-form";
 import prisma from "@/lib/prisma";
 
-export default async function NewVisitPage() {
+export default async function NewAppointmentPage() {
   // Get current session
   const session = await getSession();
 
   // Get employee record for the current user (if logged in)
   let employeeId = "";
 
-  if (session?.data?.user?.id) {
+  if (session?.user?.id) {
     const employee = await prisma.employees.findFirst({
-      where: { userId: session.data.user.id },
+      where: { userId: session.user.id },
       select: { id: true },
     });
 
@@ -78,15 +78,15 @@ export default async function NewVisitPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium">Register New Visit</h1>
+        <h1 className="text-2xl font-medium">Register New Appointment</h1>
         <p className="text-sm text-muted-foreground">
-          Register a patient visit and assign to a doctor. A bill will be
+          Register a patient appointment and assign to a doctor. A bill will be
           automatically generated.
         </p>
       </div>
 
       <div className="rounded-xl border bg-card p-6">
-        <NewVisitForm
+        <NewAppointmentForm
           patients={patients}
           doctors={doctors}
           currentEmployeeId={employeeId}

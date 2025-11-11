@@ -42,7 +42,7 @@ export function EditDepartmentDialog({
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm<UpdateDepartmentFormData>({
+  const form = useForm({
     resolver: yupResolver(updateDepartmentSchema),
     defaultValues: {
       name: department.name,
@@ -62,7 +62,7 @@ export function EditDepartmentDialog({
     })
   }, [department, form])
 
-  const onSubmit = async (data: UpdateDepartmentFormData) => {
+  const onSubmit = async (data: any) => {
     setIsLoading(true)
     const { data: result, error } = await safeClient.departments.update({
       id: department.id,

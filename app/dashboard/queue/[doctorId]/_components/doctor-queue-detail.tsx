@@ -25,14 +25,14 @@ import { useRouter } from "next/navigation";
 
 const safeClient = createSafeClient(client);
 
-type Visit = {
+type Appointment = {
   id: string;
   serialNumber: number;
   queuePosition: number;
   status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  visitType: "NEW" | "FOLLOWUP";
+  appointmentType: "NEW" | "FOLLOWUP";
   chiefComplaint: string | null;
-  visitDate: Date;
+  appointmentDate: Date;
   patient: {
     id: string;
     patientId: string;
@@ -45,7 +45,7 @@ type Visit = {
 
 type DoctorQueueDetailProps = {
   doctor: Doctor;
-  initialQueue: Visit[];
+  initialQueue: Appointment[];
 };
 
 const statusColors = {
@@ -69,29 +69,29 @@ export function DoctorQueueDetail({
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  const waitingCount = initialQueue.filter((v) => v.status === "WAITING").length;
+  const waitingCount = initialQueue.filter((a) => a.status === "WAITING").length;
   const consultingCount = initialQueue.filter(
-    (v) => v.status === "IN_CONSULTATION"
+    (a) => a.status === "IN_CONSULTATION"
   ).length;
 
   const handleStatusChange = async (
-    visitId: string,
+    appointmentId: string,
     status: string,
     employeeId: string
   ) => {
-    setIsUpdating(visitId);
+    setIsUpdating(appointmentId);
 
-    const { error } = await safeClient.visits.updateStatus({
-      id: visitId,
+    const { error } = await safeClient.appointments.updateStatus({
+      id: appointmentId,
       status: status as any,
       performedBy: employeeId,
     });
 
     if (error) {
-      toast.error(error.message || "Failed to update visit status");
+      toast.error(error.message || "Failed to update appointment status");
     } else {
       toast.success(
-        `Visit status updated to ${
+        `Appointment status updated to ${
           statusLabels[status as keyof typeof statusLabels]
         }`
       );
@@ -104,7 +104,7 @@ export function DoctorQueueDetail({
   const handleCallNext = async (employeeId: string) => {
     setIsUpdating("calling");
 
-    const { error } = await safeClient.visits.callNextPatient({
+    const { error } = await safeClient.appointments.callNextPatient({
       doctorId: doctor.id,
       performedBy: employeeId,
     });
@@ -122,7 +122,7 @@ export function DoctorQueueDetail({
   // Get employee ID from doctor (temporary - should come from session)
   const employeeId = doctor.id;
 
-  const columns: ColumnDef<Visit>[] = [
+  const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "serialNumber",
       header: "Serial #",
@@ -160,19 +160,19 @@ export function DoctorQueueDetail({
       ),
     },
     {
-      accessorKey: "visitType",
+      accessorKey: "appointmentType",
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.visitType === "NEW" ? "default" : "secondary"}
+          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
         >
-          {row.original.visitType}
+          {row.original.appointmentType}
         </Badge>
       ),
     },
     {
       accessorKey: "chiefComplaint",
-      header: "Visit Reason",
+      header: "Appointment Reason",
       cell: ({ row }) => (
         <div className="max-w-[200px] truncate text-sm">
           {row.original.chiefComplaint || (
@@ -197,9 +197,9 @@ export function DoctorQueueDetail({
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const visit = row.original;
+        const appointment = row.original;
         const canUpdate =
-          visit.status === "WAITING" || visit.status === "IN_CONSULTATION";
+          appointment.status === "WAITING" || appointment.status === "IN_CONSULTATION";
 
         return (
           <DropdownMenu>
@@ -207,7 +207,7 @@ export function DoctorQueueDetail({
               <Button
                 variant="ghost"
                 className="h-8 w-8 p-0"
-                disabled={isUpdating === visit.id}
+                disabled={isUpdating === appointment.id}
               >
                 <span className="sr-only">Open menu</span>
                 <LuEllipsisVertical className="h-4 w-4" />
@@ -215,26 +215,26 @@ export function DoctorQueueDetail({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/patients/${visit.patient.id}`}>
+                <Link href={`/dashboard/patients/${appointment.patient.id}`}>
                   <LuEye />
                   View Patient
                 </Link>
               </DropdownMenuItem>
               {canUpdate && (
                 <>
-                  {visit.status === "WAITING" && (
+                  {appointment.status === "WAITING" && (
                     <DropdownMenuItem
                       onClick={() =>
-                        handleStatusChange(visit.id, "IN_CONSULTATION", employeeId)
+                        handleStatusChange(appointment.id, "IN_CONSULTATION", employeeId)
                       }
                     >
                       Mark as In Consultation
                     </DropdownMenuItem>
                   )}
-                  {visit.status === "IN_CONSULTATION" && (
+                  {appointment.status === "IN_CONSULTATION" && (
                     <DropdownMenuItem
                       onClick={() =>
-                        handleStatusChange(visit.id, "COMPLETED", employeeId)
+                        handleStatusChange(appointment.id, "COMPLETED", employeeId)
                       }
                     >
                       Mark as Completed
@@ -243,10 +243,10 @@ export function DoctorQueueDetail({
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() =>
-                      handleStatusChange(visit.id, "CANCELLED", employeeId)
+                      handleStatusChange(appointment.id, "CANCELLED", employeeId)
                     }
                   >
-                    Cancel Visit
+                    Cancel Appointment
                   </DropdownMenuItem>
                 </>
               )}

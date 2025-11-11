@@ -19,20 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown";
-import type { PaginatedData } from "@/lib/dataTypes";
+import type { PaginatedData, Doctor } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import Link from "next/link";
 import { LuEllipsisVertical, LuEye, LuPrinter, LuUser, LuStethoscope } from "react-icons/lu";
 
-type Visit = {
+type Appointment = {
   id: string;
   serialNumber: number;
   queuePosition: number;
   status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  visitType: "NEW" | "FOLLOWUP";
-  visitDate: Date;
+  appointmentType: "NEW" | "FOLLOWUP";
+  appointmentDate: Date;
   patient: {
     id: string;
     patientId: string;
@@ -58,9 +58,10 @@ type Visit = {
   };
 };
 
-type VisitsTableProps = {
-  initialData: PaginatedData<Visit>;
+type AppointmentsTableProps = {
+  initialData: PaginatedData<Appointment>;
   currentDate: string;
+  doctors: Doctor[];
 };
 
 const statusConfig = {
@@ -70,7 +71,7 @@ const statusConfig = {
   CANCELLED: { label: "Cancelled", variant: "destructive" as const },
 };
 
-export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
+export function AppointmentsTable({ initialData, currentDate, doctors }: AppointmentsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -80,6 +81,17 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
       params.delete("status");
     } else {
       params.set("status", value);
+    }
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const handleDoctorChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("doctorId");
+    } else {
+      params.set("doctorId", value);
     }
     params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
@@ -97,7 +109,7 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const columns: ColumnDef<Visit>[] = [
+  const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "serialNumber",
       header: "Serial #",
@@ -143,13 +155,13 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
       },
     },
     {
-      accessorKey: "visitType",
+      accessorKey: "appointmentType",
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.visitType === "NEW" ? "default" : "secondary"}
+          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
         >
-          {row.original.visitType}
+          {row.original.appointmentType}
         </Badge>
       ),
     },
@@ -181,11 +193,11 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
       },
     },
     {
-      accessorKey: "visitDate",
+      accessorKey: "appointmentDate",
       header: "Time",
       cell: ({ row }) => (
         <div className="text-sm text-muted-foreground">
-          {format(new Date(row.original.visitDate), "h:mm a")}
+          {format(new Date(row.original.appointmentDate), "h:mm a")}
         </div>
       ),
     },
@@ -193,7 +205,7 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const visit = row.original;
+        const appointment = row.original;
 
         return (
           <DropdownMenu>
@@ -205,13 +217,13 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/patients/${visit.patient.id}`}>
+                <Link href={`/dashboard/patients/${appointment.patient.id}`}>
                   <LuUser />
                   View Patient
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/doctors/${visit.doctor.id}`}>
+                <Link href={`/dashboard/doctors/${appointment.doctor.id}`}>
                   <LuStethoscope />
                   View Doctor
                 </Link>
@@ -231,13 +243,13 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
     <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-medium">Visits</h1>
+          <h1 className="text-2xl font-medium">Appointments</h1>
           <p className="text-sm text-muted-foreground">
-            Today's patient visits - {format(new Date(currentDate), "MMMM d, yyyy")}
+            Today's patient appointments - {format(new Date(currentDate), "MMMM d, yyyy")}
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/visits/new">Register New Visit</Link>
+          <Link href="/dashboard/appointments/new">Register New Appointment</Link>
         </Button>
       </div>
 
@@ -258,11 +270,28 @@ export function VisitsTable({ initialData, currentDate }: VisitsTableProps) {
               <SelectItem value="CANCELLED">Cancelled</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select
+            value={searchParams.get("doctorId") || "all"}
+            onValueChange={handleDoctorChange}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Doctors</SelectItem>
+              {doctors.map((doctor) => (
+                <SelectItem key={doctor.id} value={doctor.id}>
+                  Dr. {doctor.user?.name || "Unknown"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {initialData.data.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-muted-foreground">No visits found</p>
+            <p className="text-muted-foreground">No appointments found</p>
           </div>
         ) : (
           <>

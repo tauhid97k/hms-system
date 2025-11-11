@@ -40,7 +40,7 @@ export function CreateSpecializationDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<CreateSpecializationFormData>({
-    resolver: yupResolver(createSpecializationSchema),
+    resolver: yupResolver(createSpecializationSchema) as any,
     defaultValues: {
       name: "",
       code: "",

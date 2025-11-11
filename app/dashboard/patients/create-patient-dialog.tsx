@@ -47,7 +47,7 @@ export function CreatePatientDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<CreatePatientFormData>({
-    resolver: yupResolver(createPatientSchema),
+    resolver: yupResolver(createPatientSchema) as any,
     defaultValues: {
       name: "",
       age: undefined,

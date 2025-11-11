@@ -29,7 +29,7 @@ type JourneyEvent = {
   color: string;
 };
 
-type Visit = {
+type Appointment = {
   id: string;
   status: string;
   chiefComplaint: string | null;
@@ -39,9 +39,9 @@ type Visit = {
   labTests?: any[];
 };
 
-type VisitTimelineProps = {
+type AppointmentTimelineProps = {
   journey: JourneyEvent[];
-  visit: Visit;
+  appointment: Appointment;
 };
 
 // Icon mapping
@@ -69,15 +69,15 @@ const colorMap: Record<string, string> = {
   gray: "bg-gray-500",
 };
 
-export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
+export function AppointmentTimeline({ journey, appointment }: AppointmentTimelineProps) {
   if (journey.length === 0) {
     return (
       <div className="rounded-xl border bg-card p-12 text-center">
         <LuCircleAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="mb-2 text-lg font-medium">No Journey Data</h3>
         <p className="text-sm text-muted-foreground">
-          This visit doesn't have any recorded events yet. Events will appear here as
-          the patient progresses through their visit.
+          This appointment doesn't have any recorded events yet. Events will appear here as
+          the patient progresses through their appointment.
         </p>
       </div>
     );
@@ -153,14 +153,14 @@ export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
       {/* Additional Information Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Bills */}
-        {visit.bills && visit.bills.length > 0 && (
+        {appointment.bills && appointment.bills.length > 0 && (
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
               <LuDollarSign className="h-5 w-5 text-green-500" />
               <h3 className="font-medium">Billing Information</h3>
             </div>
             <div className="space-y-2">
-              {visit.bills.map((bill: any) => (
+              {appointment.bills.map((bill: any) => (
                 <div key={bill.id} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Bill #{bill.id.slice(0, 8)}</span>
                   <span className="font-medium">${bill.totalAmount}</span>
@@ -171,14 +171,14 @@ export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
         )}
 
         {/* Prescriptions */}
-        {visit.prescriptions && visit.prescriptions.length > 0 && (
+        {appointment.prescriptions && appointment.prescriptions.length > 0 && (
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
               <LuPill className="h-5 w-5 text-purple-500" />
               <h3 className="font-medium">Prescriptions</h3>
             </div>
             <div className="space-y-2">
-              {visit.prescriptions.map((prescription: any) => (
+              {appointment.prescriptions.map((prescription: any) => (
                 <div key={prescription.id} className="text-sm">
                   <span className="text-muted-foreground">
                     {prescription.prescriptionItems?.length || 0} medication(s) prescribed
@@ -190,14 +190,14 @@ export function VisitTimeline({ journey, visit }: VisitTimelineProps) {
         )}
 
         {/* Lab Tests */}
-        {visit.labTests && visit.labTests.length > 0 && (
+        {appointment.labTests && appointment.labTests.length > 0 && (
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
               <LuFlaskRound className="h-5 w-5 text-orange-500" />
               <h3 className="font-medium">Lab Tests</h3>
             </div>
             <div className="space-y-2">
-              {visit.labTests.map((labTest: any) => (
+              {appointment.labTests.map((labTest: any) => (
                 <div key={labTest.id} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">{labTest.test?.name}</span>

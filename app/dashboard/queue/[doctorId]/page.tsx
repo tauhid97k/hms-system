@@ -19,7 +19,7 @@ export default async function DoctorQueuePage({
   }
 
   // Fetch queue data
-  const queue = await client.visits.getQueue(doctorId);
+  const queue = await client.appointments.getQueue(doctorId);
 
   return <DoctorQueueDetail doctor={doctor} initialQueue={queue} />;
 }

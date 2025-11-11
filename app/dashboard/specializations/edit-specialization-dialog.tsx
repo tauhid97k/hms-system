@@ -50,7 +50,7 @@ export function EditSpecializationDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<UpdateSpecializationFormData>({
-    resolver: yupResolver(updateSpecializationSchema),
+    resolver: yupResolver(updateSpecializationSchema) as any,
     defaultValues: {
       name: specialization.name,
       code: specialization.code,

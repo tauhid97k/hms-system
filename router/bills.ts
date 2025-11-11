@@ -58,11 +58,11 @@ export const getBills = os
               phone: true,
             },
           },
-          visit: {
+          appointment: {
             select: {
               id: true,
               serialNumber: true,
-              visitType: true,
+              appointmentType: true,
               doctor: {
                 select: {
                   id: true,
@@ -116,7 +116,7 @@ export const getBill = os
       where: { id: input },
       include: {
         patient: true,
-        visit: {
+        appointment: {
           include: {
             doctor: {
               include: {
