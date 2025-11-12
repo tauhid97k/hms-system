@@ -427,6 +427,8 @@ model appointments {
   @@index([appointmentDate]) // Daily operations
   @@index([appointmentMonth]) // Monthly partitioning
   @@index([createdAt]) // Recent appointments
+  @@unique([doctorId, appointmentDate, serialNumber]) // Prevent duplicate serial numbers
+  @@unique([doctorId, appointmentDate, queuePosition]) // Prevent duplicate queue positions
 }
 
 // ============= APPOINTMENT EVENTS (Event Sourcing Pattern) =============

@@ -13,6 +13,7 @@ import {
   getNextQueuePosition,
   generateBillNumber,
   getQueueForDoctor,
+  removeFromQueue,
 } from "@/lib/queue-emitter";
 import { format } from "date-fns";
 import { AppointmentType, AppointmentStatus, AppointmentEventType } from "../prisma/generated/client";
@@ -341,6 +342,11 @@ export const updateAppointmentStatus = os
           description: `Status changed to ${input.status}`,
         },
       });
+    }
+
+    // If appointment is cancelled or completed, remove from queue and re-adjust positions
+    if (input.status === "CANCELLED" || input.status === "COMPLETED") {
+      await removeFromQueue(input.id);
     }
 
     // Emit queue update
