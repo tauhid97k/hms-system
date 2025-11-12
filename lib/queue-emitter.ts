@@ -5,6 +5,10 @@ import { startOfDay, format } from "date-fns";
 // Global event emitter for queue updates
 export const queueEmitter = new EventEmitter();
 
+// Fix memory leak: Set max listeners to support many concurrent SSE connections
+// With 50 doctors × 20 connections each = 1000 listeners max
+queueEmitter.setMaxListeners(1000);
+
 // Type-safe event data
 export interface QueueUpdateEvent {
   doctorId: string;

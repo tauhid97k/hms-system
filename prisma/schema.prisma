@@ -427,6 +427,8 @@ model appointments {
   @@index([appointmentDate]) // Daily operations
   @@index([appointmentMonth]) // Monthly partitioning
   @@index([createdAt]) // Recent appointments
+  @@index([status]) // Status filtering (all WAITING appointments)
+  @@index([doctorId, status]) // Doctor's appointments by status
   @@unique([doctorId, appointmentDate, serialNumber]) // Prevent duplicate serial numbers
   @@unique([doctorId, appointmentDate, queuePosition]) // Prevent duplicate queue positions
 }
@@ -484,6 +486,8 @@ model bills {
   @@index([billableType, billableId]) // Polymorphic lookup
   @@index([billingDate]) // Daily billing reports
   @@index([createdAt]) // Recent bills
+  @@index([dueAmount]) // Overdue bills filtering
+  @@index([status, dueAmount]) // Complex overdue queries
 }
 
 model bill_items {
