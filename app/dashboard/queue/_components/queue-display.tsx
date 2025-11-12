@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useQueueStream } from "@/lib/hooks/use-queue-stream";
+import { LuRefreshCw, LuWifi, LuWifiOff } from "react-icons/lu";
 import type { Doctor } from "@/lib/dataTypes";
 
 type Appointment = {
@@ -45,33 +48,63 @@ const statusLabels = {
 export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
   const [queue, setQueue] = useState<Appointment[]>(initialQueue);
 
-  // TODO: Add WebSocket subscription for real-time updates
-  useEffect(() => {
-    // Placeholder for WebSocket subscription
-    // We'll implement this in the next iteration
-    console.log("Queue display mounted for doctor:", doctor.id);
+  // Subscribe to real-time updates via SSE
+  const { queue: liveQueue, isConnected, error, reconnect } = useQueueStream({
+    doctorId: doctor.id,
+    enabled: true,
+    onUpdate: (updatedQueue) => {
+      setQueue(updatedQueue);
+    },
+    onError: (err) => {
+      console.error("Queue stream error:", err);
+    },
+  });
 
-    return () => {
-      console.log("Queue display unmounted");
-    };
-  }, [doctor.id]);
+  // Use live queue if available, otherwise fall back to local state
+  const displayQueue = liveQueue.length > 0 ? liveQueue : queue;
 
-  const waitingCount = queue.filter((a) => a.status === "WAITING").length;
-  const inConsultationCount = queue.filter(
+  const waitingCount = displayQueue.filter((a) => a.status === "WAITING").length;
+  const inConsultationCount = displayQueue.filter(
     (a) => a.status === "IN_CONSULTATION"
   ).length;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          Dr. {doctor.user?.name || "Unknown"}
-          {doctor.employeeDepartments && doctor.employeeDepartments[0] && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({doctor.employeeDepartments[0].department.name})
-            </span>
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>
+            Dr. {doctor.user?.name || "Unknown"}
+            {doctor.employeeDepartments && doctor.employeeDepartments[0] && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({doctor.employeeDepartments[0].department.name})
+              </span>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <Badge variant="outline" className="gap-1.5 border-green-500 text-green-500">
+                <LuWifi className="h-3 w-3" />
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1.5 border-red-500 text-red-500">
+                <LuWifiOff className="h-3 w-3" />
+                Offline
+              </Badge>
+            )}
+            {error && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={reconnect}
+                className="gap-1.5"
+              >
+                <LuRefreshCw className="h-3.5 w-3.5" />
+                Reconnect
+              </Button>
+            )}
+          </div>
+        </div>
         <div className="flex gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Waiting: </span>
@@ -84,13 +117,13 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {queue.length === 0 ? (
+        {displayQueue.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
             No patients in queue
           </div>
         ) : (
           <div className="space-y-2">
-            {queue.map((appointment) => (
+            {displayQueue.map((appointment) => (
               <div
                 key={appointment.id}
                 className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"

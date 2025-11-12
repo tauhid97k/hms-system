@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import prisma from "./prisma";
-import { startOfDay } from "date-fns";
+import { startOfDay, format } from "date-fns";
 
 // Global event emitter for queue updates
 export const queueEmitter = new EventEmitter();
@@ -77,58 +77,166 @@ export async function emitQueueUpdate(doctorId: string) {
   }
 }
 
-// Helper to get next serial number for doctor today
+/**
+ * ATOMIC: Get next serial number for doctor today
+ * Uses database-level locking to prevent race conditions
+ */
 export async function getNextSerialNumber(doctorId: string): Promise<number> {
   const todayStart = startOfDay(new Date());
+  const todayDate = format(todayStart, "yyyy-MM-dd");
 
-  const lastVisit = await prisma.appointments.findFirst({
-    where: {
-      doctorId,
-      appointmentDate: { gte: todayStart },
-    },
-    orderBy: { serialNumber: "desc" },
-    select: { serialNumber: true },
+  return await prisma.$transaction(async (tx) => {
+    // Lock the last appointment row for this doctor today
+    // FOR UPDATE ensures no other transaction can read/write this row until we commit
+    const lastVisit = await tx.$queryRaw<Array<{ serialNumber: number }>>`
+      SELECT "serialNumber"
+      FROM appointments
+      WHERE "doctorId" = ${doctorId}
+        AND "appointmentDate" >= ${todayStart}::timestamp
+      ORDER BY "serialNumber" DESC
+      FOR UPDATE
+      LIMIT 1
+    `;
+
+    const nextSerial = lastVisit.length > 0 ? lastVisit[0].serialNumber + 1 : 1;
+
+    return nextSerial;
   });
-
-  return (lastVisit?.serialNumber || 0) + 1;
 }
 
-// Helper to get next queue position for doctor today
-export async function getNextQueuePosition(
-  doctorId: string,
-): Promise<number> {
+/**
+ * ATOMIC: Get next queue position for doctor today
+ * Uses database-level locking to prevent race conditions
+ */
+export async function getNextQueuePosition(doctorId: string): Promise<number> {
   const todayStart = startOfDay(new Date());
 
-  const count = await prisma.appointments.count({
-    where: {
-      doctorId,
-      appointmentDate: { gte: todayStart },
-      status: { in: ["WAITING", "IN_CONSULTATION"] },
-    },
-  });
+  return await prisma.$transaction(async (tx) => {
+    // Lock all active queue entries for this doctor today
+    // This prevents concurrent requests from getting the same position
+    const activeQueue = await tx.$queryRaw<Array<{ queuePosition: number }>>`
+      SELECT "queuePosition"
+      FROM appointments
+      WHERE "doctorId" = ${doctorId}
+        AND "appointmentDate" >= ${todayStart}::timestamp
+        AND "status" IN ('WAITING', 'IN_CONSULTATION')
+      ORDER BY "queuePosition" DESC
+      FOR UPDATE
+      LIMIT 1
+    `;
 
-  return count + 1;
+    const nextPosition =
+      activeQueue.length > 0 ? activeQueue[0].queuePosition + 1 : 1;
+
+    return nextPosition;
+  });
 }
 
-// Helper to generate bill number
+/**
+ * ATOMIC: Generate bill number
+ * Uses database-level locking to prevent duplicate bill numbers
+ */
 export async function generateBillNumber(): Promise<string> {
   const today = new Date();
   const year = today.getFullYear();
+  const prefix = `B-${year}`;
 
-  // Get last bill number for this year
-  const lastBill = await prisma.bills.findFirst({
-    where: {
-      billNumber: { startsWith: `B-${year}` },
+  return await prisma.$transaction(
+    async (tx) => {
+      // Lock the last bill row for this year
+      // FOR UPDATE ensures no other transaction can read/write this row until we commit
+      const lastBill = await tx.$queryRaw<Array<{ billNumber: string }>>`
+      SELECT "billNumber"
+      FROM bills
+      WHERE "billNumber" LIKE ${prefix + "%"}
+      ORDER BY "createdAt" DESC
+      FOR UPDATE
+      LIMIT 1
+    `;
+
+      let nextNumber = 1;
+      if (lastBill.length > 0) {
+        const lastNumber = parseInt(
+          lastBill[0].billNumber.split("-").pop() || "0"
+        );
+        nextNumber = lastNumber + 1;
+      }
+
+      return `${prefix}-${String(nextNumber).padStart(4, "0")}`;
     },
-    orderBy: { createdAt: "desc" },
-    select: { billNumber: true },
+    {
+      maxWait: 5000, // Maximum time to wait for a transaction slot
+      timeout: 10000, // Maximum time for the transaction to complete
+    }
+  );
+}
+
+/**
+ * Re-adjust queue positions after a cancellation or removal
+ * Decrements all positions greater than the removed position
+ */
+export async function reAdjustQueuePositions(
+  doctorId: string,
+  appointmentDate: Date,
+  removedPosition: number
+): Promise<void> {
+  const todayStart = startOfDay(appointmentDate);
+
+  await prisma.$transaction(async (tx) => {
+    // Get all appointments that need position adjustment
+    const appointmentsToUpdate = await tx.appointments.findMany({
+      where: {
+        doctorId,
+        appointmentDate: { gte: todayStart },
+        queuePosition: { gt: removedPosition },
+        status: { in: ["WAITING", "IN_CONSULTATION"] },
+      },
+      select: { id: true, queuePosition: true },
+      orderBy: { queuePosition: "asc" },
+    });
+
+    // Update each appointment's queue position
+    for (const appointment of appointmentsToUpdate) {
+      await tx.appointments.update({
+        where: { id: appointment.id },
+        data: { queuePosition: appointment.queuePosition - 1 },
+      });
+    }
   });
+}
 
-  let nextNumber = 1;
-  if (lastBill) {
-    const lastNumber = parseInt(lastBill.billNumber.split("-").pop() || "0");
-    nextNumber = lastNumber + 1;
-  }
+/**
+ * Remove appointment from queue and re-adjust positions
+ * Used when cancelling or completing appointments
+ */
+export async function removeFromQueue(appointmentId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    // Get the appointment details
+    const appointment = await tx.appointments.findUnique({
+      where: { id: appointmentId },
+      select: {
+        doctorId: true,
+        appointmentDate: true,
+        queuePosition: true,
+        status: true,
+      },
+    });
 
-  return `B-${year}-${String(nextNumber).padStart(4, "0")}`;
+    if (!appointment) {
+      throw new Error("Appointment not found");
+    }
+
+    // Only re-adjust if appointment was in active queue
+    if (
+      appointment.status === "WAITING" ||
+      appointment.status === "IN_CONSULTATION"
+    ) {
+      // Re-adjust queue positions
+      await reAdjustQueuePositions(
+        appointment.doctorId,
+        appointment.appointmentDate,
+        appointment.queuePosition
+      );
+    }
+  });
 }
