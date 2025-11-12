@@ -106,21 +106,34 @@ export const getAppointments = os
     };
   });
 
-// Get appointment by ID with full details
+// Get appointment by ID (basic details only - optimized)
 export const getAppointment = os
   .route({
     method: "GET",
     path: "/appointments/:id",
-    summary: "Get appointment by ID",
+    summary: "Get appointment by ID (basic details)",
   })
   .input(string().required())
   .handler(async ({ input }) => {
     const appointment = await prisma.appointments.findUnique({
       where: { id: input },
       include: {
-        patient: true,
+        patient: {
+          select: {
+            id: true,
+            patientId: true,
+            name: true,
+            age: true,
+            gender: true,
+            phone: true,
+            bloodGroup: true,
+          },
+        },
         doctor: {
-          include: {
+          select: {
+            id: true,
+            consultationFee: true,
+            hospitalFee: true,
             user: {
               select: {
                 id: true,
@@ -131,44 +144,13 @@ export const getAppointment = os
           },
         },
         assignedByEmployee: {
-          include: {
+          select: {
+            id: true,
             user: {
               select: {
                 name: true,
               },
             },
-          },
-        },
-        bills: {
-          include: {
-            billItems: true,
-            payments: true,
-          },
-        },
-        prescriptions: {
-          include: {
-            items: {
-              include: {
-                medicine: true,
-                instruction: true,
-              },
-            },
-          },
-        },
-        appointmentEvents: {
-          include: {
-            performedByEmployee: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: {
-            performedAt: "asc",
           },
         },
       },
@@ -179,6 +161,137 @@ export const getAppointment = os
     }
 
     return appointment;
+  });
+
+// Get appointment bills (separate endpoint for better performance)
+export const getAppointmentBills = os
+  .route({
+    method: "GET",
+    path: "/appointments/:id/bills",
+    summary: "Get bills for an appointment",
+  })
+  .input(string().required())
+  .handler(async ({ input }) => {
+    const bills = await prisma.bills.findMany({
+      where: { appointmentId: input },
+      include: {
+        billItems: {
+          select: {
+            id: true,
+            itemName: true,
+            quantity: true,
+            unitPrice: true,
+            discount: true,
+            total: true,
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            amount: true,
+            paymentMethod: true,
+            paymentDate: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return bills;
+  });
+
+// Get appointment events (paginated for performance)
+export const getAppointmentEvents = os
+  .route({
+    method: "GET",
+    path: "/appointments/:id/events",
+    summary: "Get events for an appointment (paginated)",
+  })
+  .input(
+    object({
+      id: string().required(),
+      page: number().default(1).min(1),
+      limit: number().default(20).min(1).max(100),
+    })
+  )
+  .handler(async ({ input }) => {
+    const skip = (input.page - 1) * input.limit;
+
+    const [events, total] = await Promise.all([
+      prisma.appointment_events.findMany({
+        where: { appointmentId: input.id },
+        include: {
+          performedByEmployee: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { performedAt: "asc" },
+        skip,
+        take: input.limit,
+      }),
+      prisma.appointment_events.count({ where: { appointmentId: input.id } }),
+    ]);
+
+    return {
+      data: events,
+      meta: {
+        page: input.page,
+        limit: input.limit,
+        total,
+        totalPages: Math.ceil(total / input.limit),
+      },
+    };
+  });
+
+// Get appointment prescriptions (separate endpoint)
+export const getAppointmentPrescriptions = os
+  .route({
+    method: "GET",
+    path: "/appointments/:id/prescriptions",
+    summary: "Get prescriptions for an appointment",
+  })
+  .input(string().required())
+  .handler(async ({ input }) => {
+    const prescriptions = await prisma.prescriptions.findMany({
+      where: { appointmentId: input },
+      include: {
+        items: {
+          include: {
+            medicine: {
+              select: {
+                id: true,
+                name: true,
+                genericName: true,
+                strength: true,
+                form: true,
+              },
+            },
+            instruction: {
+              select: {
+                id: true,
+                label: true,
+                morning: true,
+                afternoon: true,
+                evening: true,
+                night: true,
+                beforeMeal: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return prescriptions;
   });
 
 // Create appointment with auto-billing

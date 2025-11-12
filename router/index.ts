@@ -1,4 +1,4 @@
-import { createCategory, deleteCategory, getCategories } from "./categories"
+import { createCategory, deleteCategory, getCategories } from "./categories";
 import {
   getDepartments,
   getDepartment,
@@ -6,7 +6,7 @@ import {
   updateDepartment,
   deleteDepartment,
   toggleDepartmentStatus,
-} from "./departments"
+} from "./departments";
 import {
   getSpecializations,
   getSpecialization,
@@ -14,14 +14,14 @@ import {
   updateSpecialization,
   deleteSpecialization,
   toggleSpecializationStatus,
-} from "./specializations"
+} from "./specializations";
 import {
   getPatients,
   getPatient,
   createPatient,
   updatePatient,
   deletePatient,
-} from "./patients"
+} from "./patients";
 import {
   getDoctors,
   getDoctor,
@@ -29,21 +29,20 @@ import {
   updateDoctor,
   deleteDoctor,
   toggleDoctorAvailability,
-} from "./doctors"
+} from "./doctors";
 import {
   getAppointments,
   getAppointment,
+  getAppointmentBills,
+  getAppointmentEvents,
+  getAppointmentPrescriptions,
   createAppointment,
   updateAppointment,
   updateAppointmentStatus,
   callNextPatient,
   getQueue,
-} from "./appointments"
-import {
-  getBills,
-  getBill,
-  updateBillStatus,
-} from "./bills"
+} from "./appointments";
+import { getBills, getBill, updateBillStatus } from "./bills";
 
 export const router = {
   categories: {
@@ -85,6 +84,9 @@ export const router = {
   appointments: {
     getAll: getAppointments,
     getOne: getAppointment,
+    getBills: getAppointmentBills,
+    getEvents: getAppointmentEvents,
+    getPrescriptions: getAppointmentPrescriptions,
     create: createAppointment,
     update: updateAppointment,
     updateStatus: updateAppointmentStatus,
@@ -96,4 +98,4 @@ export const router = {
     getOne: getBill,
     updateStatus: updateBillStatus,
   },
-}
+};
