@@ -22,18 +22,11 @@ import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { updateSpecializationSchema } from "@/schema/specializationSchema";
 import type { InferType } from "yup";
+import type { Specialization } from "@/lib/dataTypes";
 
 const safeClient = createSafeClient(client);
 
 type UpdateSpecializationFormData = InferType<typeof updateSpecializationSchema>;
-
-type Specialization = {
-  id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  isActive: boolean;
-};
 
 type EditSpecializationDialogProps = {
   specialization: Specialization;

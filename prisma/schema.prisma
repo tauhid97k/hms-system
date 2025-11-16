@@ -553,17 +553,17 @@ model medicine_instructions {
 
 model prescriptions {
   id            String    @id @default(ulid())
-  appointmentId String
+  appointmentId String    @unique // One prescription per appointment
   doctorId      String // References employees.id
   notes         String?
   followUpDate  DateTime?
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   appointment appointments         @relation(fields: [appointmentId], references: [id])
   doctor      employees            @relation(fields: [doctorId], references: [id])
   items       prescription_items[]
 
-  @@index([appointmentId])
   @@index([doctorId])
   @@index([createdAt])
 }

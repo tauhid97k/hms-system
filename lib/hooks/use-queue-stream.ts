@@ -1,45 +1,15 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-
-type Appointment = {
-  id: string;
-  serialNumber: number;
-  queuePosition: number;
-  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  appointmentType: "NEW" | "FOLLOWUP";
-  chiefComplaint: string | null;
-  appointmentDate: Date;
-  patient: {
-    id: string;
-    patientId: string;
-    name: string;
-    age: number;
-    gender: string | null;
-    phone: string;
-  };
-  doctor: {
-    id: string;
-    user: {
-      name: string;
-      email: string;
-    };
-  };
-  assignedByEmployee: {
-    id: string;
-    user: {
-      name: string;
-    };
-  };
-};
+import type { QueueAppointment } from "@/lib/dataTypes";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseQueueStreamOptions {
   doctorId: string;
   enabled?: boolean;
-  onUpdate?: (queue: Appointment[]) => void;
+  onUpdate?: (queue: QueueAppointment[]) => void;
   onError?: (error: Error) => void;
 }
 
 interface UseQueueStreamResult {
-  queue: Appointment[];
+  queue: QueueAppointment[];
   isConnected: boolean;
   error: Error | null;
   reconnect: () => void;
@@ -67,7 +37,7 @@ export function useQueueStream({
   onUpdate,
   onError,
 }: UseQueueStreamOptions): UseQueueStreamResult {
-  const [queue, setQueue] = useState<Appointment[]>([]);
+  const [queue, setQueue] = useState<QueueAppointment[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -86,6 +56,9 @@ export function useQueueStream({
     setIsConnected(false);
   }, []);
 
+  // Declare connect with useRef to avoid hoisting issues
+  const connectRef = useRef<() => void>(() => {});
+
   const connect = useCallback(() => {
     if (!enabled || !doctorId) {
       cleanup();
@@ -96,9 +69,7 @@ export function useQueueStream({
     cleanup();
 
     try {
-      const eventSource = new EventSource(
-        `/api/queue/stream/${doctorId}`
-      );
+      const eventSource = new EventSource(`/api/queue/stream/${doctorId}`);
 
       eventSource.onopen = () => {
         console.log(`SSE connected for doctor: ${doctorId}`);
@@ -146,16 +117,15 @@ export function useQueueStream({
         const baseDelay = 1000;
 
         if (reconnectAttemptsRef.current < maxAttempts) {
-          const delay =
-            baseDelay * Math.pow(2, reconnectAttemptsRef.current);
+          const delay = baseDelay * Math.pow(2, reconnectAttemptsRef.current);
           reconnectAttemptsRef.current += 1;
 
           console.log(
-            `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxAttempts})...`
+            `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxAttempts})...`,
           );
 
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            connectRef.current?.();
           }, delay);
         } else {
           console.error("Max reconnection attempts reached");
@@ -174,14 +144,22 @@ export function useQueueStream({
 
   const reconnect = useCallback(() => {
     reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect]);
+    connectRef.current?.();
+  }, []);
 
   useEffect(() => {
-    connect();
+    // Store connect in ref to avoid hoisting issues
+    connectRef.current = connect;
+
+    // Defer connection to avoid setState in effect warning
+    // This is intentional for setting up external system (EventSource)
+    const timer = setTimeout(() => {
+      connect();
+    }, 0);
 
     // Cleanup on unmount
     return () => {
+      clearTimeout(timer);
       cleanup();
     };
   }, [connect, cleanup]);

@@ -60,6 +60,7 @@ export function DepartmentsTable({ initialData }: DepartmentsTableProps) {
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(
     null,
   );
@@ -201,7 +202,10 @@ export function DepartmentsTable({ initialData }: DepartmentsTableProps) {
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => setEditingDepartment(department)}
+                onClick={() => {
+                  setEditingDepartment(department);
+                  setIsEditDialogOpen(true);
+                }}
               >
                 <LuPencil />
                 Edit
@@ -280,8 +284,11 @@ export function DepartmentsTable({ initialData }: DepartmentsTableProps) {
       {editingDepartment && (
         <EditDepartmentDialog
           department={editingDepartment}
-          open={!!editingDepartment}
-          onOpenChange={(open) => !open && setEditingDepartment(null)}
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            if (!open) setEditingDepartment(null);
+          }}
         />
       )}
 

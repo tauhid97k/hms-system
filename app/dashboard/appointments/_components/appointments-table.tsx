@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -17,51 +18,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Doctor, PaginatedData } from "@/lib/dataTypes";
+import type { Doctor, Medicine, MedicineInstruction, PaginatedData, AppointmentTableRow } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   LuEllipsisVertical,
+  LuPill,
   LuPrinter,
   LuStethoscope,
   LuUser,
 } from "react-icons/lu";
-
-type Appointment = {
-  id: string;
-  serialNumber: number;
-  queuePosition: number;
-  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-  appointmentType: "NEW" | "FOLLOWUP";
-  appointmentDate: Date;
-  patient: {
-    id: string;
-    patientId: string;
-    name: string;
-    age: number;
-    gender: string | null;
-    phone: string;
-  };
-  doctor: {
-    id: string;
-    user: {
-      id: string;
-      name: string;
-      email: string;
-    } | null;
-    department?: {
-      id: string;
-      name: string;
-    } | null;
-  };
-};
+import { PrescriptionDialog } from "./prescription-dialog";
 
 type AppointmentsTableProps = {
-  initialData: PaginatedData<Appointment>;
+  initialData: PaginatedData<AppointmentTableRow>;
   currentDate: string;
   doctors: Doctor[];
+  medicines: Medicine[];
+  instructions: MedicineInstruction[];
 };
 
 const statusConfig = {
@@ -75,9 +51,13 @@ export function AppointmentsTable({
   initialData,
   currentDate,
   doctors,
+  medicines,
+  instructions,
 }: AppointmentsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentTableRow | null>(null);
 
   const handleStatusChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -113,7 +93,7 @@ export function AppointmentsTable({
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const columns: ColumnDef<Appointment>[] = [
+  const columns: ColumnDef<AppointmentTableRow>[] = [
     {
       accessorKey: "serialNumber",
       header: "Serial #",
@@ -228,6 +208,17 @@ export function AppointmentsTable({
                   View Doctor
                 </Link>
               </DropdownMenuItem>
+              {appointment.status === "IN_CONSULTATION" && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedAppointment(appointment);
+                    setPrescriptionDialogOpen(true);
+                  }}
+                >
+                  <LuPill />
+                  Prescribe
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem>
                 <LuPrinter />
                 Print Receipt
@@ -297,6 +288,18 @@ export function AppointmentsTable({
           onLimitChange={handleLimitChange}
         />
       </div>
+
+      {/* Prescription Dialog */}
+      {selectedAppointment && (
+        <PrescriptionDialog
+          open={prescriptionDialogOpen}
+          onOpenChange={setPrescriptionDialogOpen}
+          appointment={selectedAppointment}
+          doctorId={selectedAppointment.doctor.id}
+          medicines={medicines}
+          instructions={instructions}
+        />
+      )}
     </>
   );
 }

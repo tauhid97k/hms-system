@@ -20,21 +20,41 @@ export default async function AppointmentsPage(props: { searchParams: SearchPara
     ? String(searchParams.appointmentDate)
     : format(new Date(), "yyyy-MM-dd");
 
-  // Fetch all available doctors for filter
-  const doctorsData = await client.doctors.getAll({
-    page: 1,
-    limit: 100,
-    isAvailable: "true",
-  });
+  // Fetch all data in parallel
+  const [doctorsData, appointmentsData, medicinesData, instructionsData] = await Promise.all([
+    client.doctors.getAll({
+      page: 1,
+      limit: 100,
+      isAvailable: "true",
+    }),
+    client.appointments.getAll({
+      page,
+      limit,
+      status,
+      doctorId,
+      appointmentDate,
+    }),
+    client.medicines.getAll({
+      page: 1,
+      limit: 100,
+      search: "",
+      isActive: "true",
+    }),
+    client.medicineInstructions.getAll({
+      page: 1,
+      limit: 100,
+      search: "",
+      isActive: "true",
+    }),
+  ]);
 
-  // Fetch appointments
-  const appointmentsData = await client.appointments.getAll({
-    page,
-    limit,
-    status,
-    doctorId,
-    appointmentDate,
-  });
-
-  return <AppointmentsTable initialData={appointmentsData} currentDate={appointmentDate} doctors={doctorsData.data} />;
+  return (
+    <AppointmentsTable
+      initialData={appointmentsData}
+      currentDate={appointmentDate}
+      doctors={doctorsData.data}
+      medicines={medicinesData.data}
+      instructions={instructionsData.data}
+    />
+  );
 }

@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PaginatedData } from "@/lib/dataTypes";
+import type { PaginatedData, Specialization } from "@/lib/dataTypes";
 import { formatDateTime } from "@/lib/date-format";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
@@ -45,19 +45,6 @@ import { EditSpecializationDialog } from "./edit-specialization-dialog";
 
 const safeClient = createSafeClient(client);
 
-type Specialization = {
-  id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  isActive: boolean;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  _count?: {
-    employeeSpecializations: number;
-  };
-};
-
 type SpecializationsTableProps = {
   initialData: PaginatedData<Specialization>;
 };
@@ -67,6 +54,7 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
   const searchParams = useSearchParams();
   const params = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSpecialization, setEditingSpecialization] = useState<Specialization | null>(null);
   const [deletingSpecialization, setDeletingSpecialization] = useState<Specialization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -191,7 +179,10 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setEditingSpecialization(specialization)}>
+              <DropdownMenuItem onClick={() => {
+                setEditingSpecialization(specialization);
+                setIsEditDialogOpen(true);
+              }}>
                 <LuPencil />
                 Edit
               </DropdownMenuItem>
@@ -254,8 +245,11 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
       {editingSpecialization && (
         <EditSpecializationDialog
           specialization={editingSpecialization}
-          open={!!editingSpecialization}
-          onOpenChange={(open) => !open && setEditingSpecialization(null)}
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            if (!open) setEditingSpecialization(null);
+          }}
         />
       )}
 

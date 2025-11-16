@@ -1,48 +1,55 @@
-import { createCategory, deleteCategory, getCategories } from "./categories";
 import {
-  getDepartments,
-  getDepartment,
-  createDepartment,
-  updateDepartment,
-  deleteDepartment,
-  toggleDepartmentStatus,
-} from "./departments";
-import {
-  getSpecializations,
-  getSpecialization,
-  createSpecialization,
-  updateSpecialization,
-  deleteSpecialization,
-  toggleSpecializationStatus,
-} from "./specializations";
-import {
-  getPatients,
-  getPatient,
-  createPatient,
-  updatePatient,
-  deletePatient,
-} from "./patients";
-import {
-  getDoctors,
-  getDoctor,
-  createDoctor,
-  updateDoctor,
-  deleteDoctor,
-  toggleDoctorAvailability,
-} from "./doctors";
-import {
-  getAppointments,
+  callNextPatient,
+  createAppointment,
   getAppointment,
   getAppointmentBills,
   getAppointmentEvents,
   getAppointmentPrescriptions,
-  createAppointment,
+  getAppointments,
+  getQueue,
   updateAppointment,
   updateAppointmentStatus,
-  callNextPatient,
-  getQueue,
 } from "./appointments";
-import { getBills, getBill, updateBillStatus } from "./bills";
+import { getBill, getBills, updateBillStatus } from "./bills";
+import { createCategory, deleteCategory, getCategories } from "./categories";
+import {
+  createDepartment,
+  deleteDepartment,
+  getDepartment,
+  getDepartments,
+  toggleDepartmentStatus,
+  updateDepartment,
+} from "./departments";
+import {
+  createDoctor,
+  deleteDoctor,
+  getDoctor,
+  getDoctors,
+  toggleDoctorAvailability,
+  updateDoctor,
+} from "./doctors";
+import { getMedicineInstructions } from "./medicineInstructions";
+import { getMedicine, getMedicines } from "./medicines";
+import {
+  createPatient,
+  deletePatient,
+  getPatient,
+  getPatients,
+  updatePatient,
+} from "./patients";
+import {
+  createPrescription,
+  getPrescriptionByAppointment,
+  getPrescriptionsByPatient,
+} from "./prescriptions";
+import {
+  createSpecialization,
+  deleteSpecialization,
+  getSpecialization,
+  getSpecializations,
+  toggleSpecializationStatus,
+  updateSpecialization,
+} from "./specializations";
 
 export const router = {
   categories: {
@@ -97,5 +104,17 @@ export const router = {
     getAll: getBills,
     getOne: getBill,
     updateStatus: updateBillStatus,
+  },
+  medicines: {
+    getAll: getMedicines,
+    getOne: getMedicine,
+  },
+  medicineInstructions: {
+    getAll: getMedicineInstructions,
+  },
+  prescriptions: {
+    create: createPrescription,
+    getByAppointment: getPrescriptionByAppointment,
+    getByPatient: getPrescriptionsByPatient,
   },
 };

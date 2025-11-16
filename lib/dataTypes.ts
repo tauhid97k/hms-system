@@ -68,6 +68,9 @@ export type Specialization = {
   isActive: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
+  _count?: {
+    employeeSpecializations: number;
+  };
 };
 
 // Employee (Doctor, Nurse, Technician, etc.)
@@ -169,4 +172,139 @@ export type Bill = {
     paymentDate: string | Date;
     transactionId: string | null;
   }>;
+};
+
+// Medicine
+export type Medicine = {
+  id: string;
+  name: string;
+  genericName: string | null;
+  type: string | null;
+  manufacturer: string | null;
+  strength: string | null;
+  price: number | null;
+  stock: number | null;
+  minStock: number | null;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+// Medicine Instruction
+export type MedicineInstruction = {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+};
+
+// Prescription Item
+export type PrescriptionItem = {
+  id: string;
+  prescriptionId: string;
+  medicineId: string;
+  instructionId: string | null;
+  duration: string | null;
+  notes: string | null;
+  medicine?: Medicine;
+  instruction?: MedicineInstruction | null;
+};
+
+// Prescription
+export type Prescription = {
+  id: string;
+  appointmentId: string;
+  doctorId: string;
+  notes: string | null;
+  followUpDate: string | Date | null;
+  createdAt: string | Date;
+  items?: PrescriptionItem[];
+  doctor?: Employee;
+};
+
+// Appointment data for prescription dialog
+export type AppointmentForPrescription = {
+  id: string;
+  appointmentDate: string | Date;
+  appointmentType: "NEW" | "FOLLOWUP";
+  serialNumber: number;
+  patient: {
+    id: string;
+    name: string;
+    age: number;
+    gender: "MALE" | "FEMALE" | "OTHER" | null;
+    patientId: string;
+  };
+  doctor: {
+    id: string;
+    user?: {
+      id?: string;
+      name: string;
+      email?: string;
+      avatar?: string | null;
+    } | null;
+  };
+};
+
+// Appointment table row (for appointments list view)
+export type AppointmentTableRow = {
+  id: string;
+  serialNumber: number;
+  queuePosition: number;
+  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
+  appointmentType: "NEW" | "FOLLOWUP";
+  appointmentDate: Date;
+  patient: {
+    id: string;
+    patientId: string;
+    name: string;
+    age: number;
+    gender: "MALE" | "FEMALE" | "OTHER" | null;
+    phone: string;
+  };
+  doctor: {
+    id: string;
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+      avatar?: string | null;
+    } | null;
+    department?: {
+      id: string;
+      name: string;
+    } | null;
+  };
+};
+
+// Queue appointment for real-time streaming
+export type QueueAppointment = {
+  id: string;
+  serialNumber: number;
+  queuePosition: number;
+  status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
+  appointmentType: "NEW" | "FOLLOWUP";
+  chiefComplaint: string | null;
+  appointmentDate: Date;
+  patient: {
+    id: string;
+    patientId: string;
+    name: string;
+    age: number;
+    gender: "MALE" | "FEMALE" | "OTHER" | null;
+    phone: string;
+  };
+  doctor: {
+    id: string;
+    user: {
+      name: string;
+      email: string;
+    };
+  };
+  assignedByEmployee: {
+    id: string;
+    user: {
+      name: string;
+    };
+  };
 };

@@ -39,6 +39,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Category, PaginatedData } from "@/lib/dataTypes";
 import { formatDateTime } from "@/lib/date-format";
 import { client } from "@/lib/orpc";
+import { createSafeClient } from "@orpc/client";
+
+const safeClient = createSafeClient(client);
 import { categorySchema, CategorySchemaType } from "@/schema/categorySchema";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { ColumnDef } from "@tanstack/react-table";
@@ -71,8 +74,13 @@ const CategoriesTable = ({
 
   // Handle Form Submit
   const onSubmit = async (data: CategorySchemaType) => {
-    await client.categories.create(data);
+    const { error } = await safeClient.categories.create(data);
+    if (error) {
+      toast.error(error.message || "Failed to create category");
+      return;
+    }
     setOpenCategoryForm(false);
+    toast.success("Category created successfully");
     router.refresh();
     createForm.reset();
   };
@@ -84,9 +92,13 @@ const CategoriesTable = ({
       return;
     }
 
-    await client.categories.delete(id);
+    const { error } = await safeClient.categories.delete(id);
+    if (error) {
+      toast.error(error.message || "Failed to delete category");
+      return;
+    }
     setOpenDeleteDialog(false);
-    toast.success("Category deleted");
+    toast.success("Category deleted successfully");
     router.refresh();
   };
 
