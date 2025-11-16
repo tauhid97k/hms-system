@@ -36,12 +36,27 @@ export const getDoctors = os
           {
             user: {
               OR: [
-                { name: { contains: input.search, mode: "insensitive" } },
-                { email: { contains: input.search, mode: "insensitive" } },
+                {
+                  name: {
+                    contains: input.search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  email: {
+                    contains: input.search,
+                    mode: "insensitive" as const,
+                  },
+                },
               ],
             },
           },
-          { qualification: { contains: input.search, mode: "insensitive" } },
+          {
+            qualification: {
+              contains: input.search,
+              mode: "insensitive" as const,
+            },
+          },
         ],
       });
     }
@@ -49,9 +64,7 @@ export const getDoctors = os
     // Department filter
     if (input.departmentId && input.departmentId !== "all") {
       andConditions.push({
-        employeeDepartments: {
-          some: { departmentId: input.departmentId },
-        },
+        departmentId: input.departmentId,
       });
     }
 
@@ -73,15 +86,12 @@ export const getDoctors = os
 
     // Only get employees who are doctors (have consultation fee or are assigned to departments)
     andConditions.push({
-      OR: [
-        { consultationFee: { not: null } },
-        { employeeDepartments: { some: {} } },
-      ],
+      OR: [{ consultationFee: { not: null } }, { departmentId: { not: null } }],
     });
 
     const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    const [doctors, total] = await Promise.all([
+    const [doctors, total] = await prisma.$transaction([
       prisma.employees.findMany({
         where,
         skip,
@@ -98,12 +108,8 @@ export const getDoctors = os
               isActive: true,
             },
           },
-          employeeDepartments: {
-            include: {
-              department: {
-                select: { id: true, name: true, code: true },
-              },
-            },
+          department: {
+            select: { id: true, name: true, code: true },
           },
           employeeSpecializations: {
             include: {
@@ -154,12 +160,8 @@ export const getDoctor = os
             isActive: true,
           },
         },
-        employeeDepartments: {
-          include: {
-            department: {
-              select: { id: true, name: true, code: true },
-            },
-          },
+        department: {
+          select: { id: true, name: true, code: true },
         },
         employeeSpecializations: {
           include: {
@@ -206,7 +208,7 @@ export const createDoctor = os
       isAvailable: boolean().optional().default(true),
 
       // Relationships
-      departmentIds: array(string()).optional().default([]),
+      departmentId: string().optional().nullable(),
       specializationIds: array(string()).optional().default([]),
 
       // JSON fields
@@ -247,6 +249,7 @@ export const createDoctor = os
       const employee = await tx.employees.create({
         data: {
           userId: user.id,
+          departmentId: input.departmentId || null,
           bio: input.bio || null,
           qualification: input.qualification || null,
           consultationFee: input.consultationFee,
@@ -261,20 +264,7 @@ export const createDoctor = os
         },
       });
 
-      // 3. Assign departments
-      if (input.departmentIds && input.departmentIds.length > 0) {
-        await tx.employee_departments.createMany({
-          data: input.departmentIds
-            .filter((id): id is string => !!id)
-            .map((deptId, index) => ({
-              employeeId: employee.id,
-              departmentId: deptId,
-              isPrimary: index === 0, // First one is primary
-            })),
-        });
-      }
-
-      // 4. Assign specializations
+      // 3. Assign specializations
       if (input.specializationIds && input.specializationIds.length > 0) {
         await tx.employee_specializations.createMany({
           data: input.specializationIds
@@ -286,7 +276,7 @@ export const createDoctor = os
         });
       }
 
-      // 5. Assign doctor role (role fetched before transaction)
+      // 4. Assign doctor role (role fetched before transaction)
       if (doctorRole) {
         await tx.user_roles.create({
           data: {
@@ -326,7 +316,7 @@ export const updateDoctor = os
       isAvailable: boolean().optional(),
 
       // Relationships
-      departmentIds: array(string()).optional(),
+      departmentId: string().optional().nullable(),
       specializationIds: array(string()).optional(),
 
       // JSON fields
@@ -337,7 +327,7 @@ export const updateDoctor = os
   .handler(async ({ input }) => {
     const {
       id,
-      departmentIds,
+      departmentId,
       specializationIds,
       name,
       email,
@@ -387,6 +377,7 @@ export const updateDoctor = os
         where: { id },
         data: {
           ...employeeData,
+          ...(departmentId !== undefined && { departmentId }),
           experiences: employeeData.experiences
             ? JSON.parse(JSON.stringify(employeeData.experiences))
             : undefined,
@@ -396,28 +387,7 @@ export const updateDoctor = os
         },
       });
 
-      // 3. ALWAYS update departments if provided (even if empty array)
-      if (departmentIds !== undefined) {
-        // Remove all existing
-        await tx.employee_departments.deleteMany({
-          where: { employeeId: id },
-        });
-
-        // Add new ones
-        if (departmentIds.length > 0) {
-          await tx.employee_departments.createMany({
-            data: departmentIds
-              .filter((deptId): deptId is string => !!deptId)
-              .map((deptId, index) => ({
-                employeeId: id,
-                departmentId: deptId,
-                isPrimary: index === 0,
-              })),
-          });
-        }
-      }
-
-      // 4. ALWAYS update specializations if provided (even if empty array)
+      // 3. ALWAYS update specializations if provided (even if empty array)
       if (specializationIds !== undefined) {
         // Remove all existing
         await tx.employee_specializations.deleteMany({
@@ -451,12 +421,8 @@ export const updateDoctor = os
               isActive: true,
             },
           },
-          employeeDepartments: {
-            include: {
-              department: {
-                select: { id: true, name: true, code: true },
-              },
-            },
+          department: {
+            select: { id: true, name: true, code: true },
           },
           employeeSpecializations: {
             include: {

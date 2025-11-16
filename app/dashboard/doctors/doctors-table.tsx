@@ -17,8 +17,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
@@ -179,21 +177,17 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       ),
     },
     {
-      accessorKey: "employeeDepartments",
-      header: "Departments",
+      accessorKey: "department",
+      header: "Department",
       cell: ({ row }) => {
-        const departments = row.original.employeeDepartments || [];
-        if (departments.length === 0) {
-          return <span className="text-sm text-muted-foreground">-</span>;
+        const department = row.original.department;
+        if (!department) {
+          return <span className="text-sm text-center text-muted-foreground">-</span>;
         }
         return (
-          <div className="flex flex-wrap gap-1">
-            {departments.map((ed) => (
-              <Badge key={ed.id} variant="secondary">
-                {ed.department.name}
-              </Badge>
-            ))}
-          </div>
+          <Badge variant="secondary">
+            {department.name}
+          </Badge>
         );
       },
     },
@@ -231,7 +225,7 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       accessorKey: "consultationFee",
       header: "Consultation Fee",
       cell: ({ row }) => (
-        <div className="text-sm font-medium">
+        <div className="text-sm font-medium text-center">
           {row.original.consultationFee !== null
             ? `$${row.original.consultationFee.toFixed(2)}`
             : "-"}
@@ -251,7 +245,7 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       accessorKey: "_count.doctorAppointments",
       header: "Appointments",
       cell: ({ row }) => (
-        <div className="text-sm">{row.original._count?.doctorAppointments || 0}</div>
+        <div className="text-sm text-center">{row.original._count?.doctorAppointments || 0}</div>
       ),
     },
     {

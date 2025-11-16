@@ -1,3 +1,5 @@
+import type { Prisma } from "../prisma/generated/client";
+
 // Meta Data
 export type MetaData = {
   page: number;
@@ -72,11 +74,12 @@ export type Specialization = {
 export type Employee = {
   id: string;
   userId: string;
+  departmentId: string | null;
   bio: string | null;
   qualification: string | null;
-  experiences: any; // JSON
-  certificates: any; // JSON
-  documents: any; // JSON
+  experiences: Prisma.JsonValue | null; // JSON
+  certificates: Prisma.JsonValue | null; // JSON
+  documents: Prisma.JsonValue | null; // JSON
   consultationFee: number | null;
   hospitalFee: number | null;
   isAvailable: boolean;
@@ -90,17 +93,11 @@ export type Employee = {
     avatar: string | null;
     isActive: boolean;
   };
-  employeeDepartments?: Array<{
+  department?: {
     id: string;
-    employeeId: string;
-    departmentId: string;
-    isPrimary: boolean;
-    department: {
-      id: string;
-      name: string;
-      code: string;
-    };
-  }>;
+    name: string;
+    code: string;
+  } | null;
   employeeSpecializations?: Array<{
     id: string;
     employeeId: string;

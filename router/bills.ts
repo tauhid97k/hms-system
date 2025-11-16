@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { os } from "@orpc/server";
 import { string, number, object } from "yup";
+import { Prisma, BillStatus } from "../prisma/generated/client";
 
 // Get all bills with pagination and filters
 export const getBills = os
@@ -26,7 +27,7 @@ export const getBills = os
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.billsWhereInput = {};
     if (patientId) where.patientId = patientId;
 
     // Handle status filter
@@ -35,7 +36,7 @@ export const getBills = os
         // DUE means bills with outstanding balance
         where.dueAmount = { gt: 0 };
       } else {
-        where.status = status;
+        where.status = status as BillStatus;
       }
     }
 
@@ -43,10 +44,10 @@ export const getBills = os
 
     // Search by bill number
     if (search) {
-      where.billNumber = { contains: search, mode: "insensitive" };
+      where.billNumber = { contains: search, mode: "insensitive" as const };
     }
 
-    const [bills, total] = await Promise.all([
+    const [bills, total] = await prisma.$transaction([
       prisma.bills.findMany({
         where,
         include: {
@@ -174,7 +175,7 @@ export const updateBillStatus = os
     const bill = await prisma.bills.update({
       where: { id: input.id },
       data: {
-        status: input.status as any,
+        status: input.status as BillStatus,
       },
     });
 

@@ -11,21 +11,7 @@ type AppointmentJourneyPageProps = {
   params: Promise<{ id: string; appointmentId: string }>;
 };
 
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
-type AppointmentEvent = {
-  id: string;
-  type: string;
-  description: string;
-  timestamp: Date;
-  userId?: string;
-};
-
-type AppointmentWithEvents = {
-  id: string;
-  appointmentEvents?: AppointmentEvent[];
-  [key: string]: any;
-};
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline" | "success" | "warning";
 
 export default async function AppointmentJourneyPage({ params }: AppointmentJourneyPageProps) {
   const { id, appointmentId } = await params;
@@ -78,7 +64,7 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
             <div>
               <p className="text-sm text-muted-foreground">Department</p>
               <p className="font-medium">
-                {(appointment as any).doctor?.employeeDepartments?.[0]?.department?.name || (
+                {appointment.doctor?.department?.name || (
                   <span className="text-muted-foreground">Not assigned</span>
                 )}
               </p>
@@ -113,7 +99,7 @@ export default async function AppointmentJourneyPage({ params }: AppointmentJour
         {/* Timeline */}
         <div>
           <h2 className="mb-4 text-lg font-medium">Patient Journey Timeline</h2>
-          <AppointmentTimeline journey={(appointment as AppointmentWithEvents).appointmentEvents || []} appointment={appointment} />
+          <AppointmentTimeline journey={[]} appointment={appointment} />
         </div>
       </div>
     );

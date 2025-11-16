@@ -112,10 +112,10 @@ export function AppointmentForm({
                     availableDoctors.map((doctor) => (
                       <SelectItem key={doctor.id} value={doctor.id}>
                         Dr. {doctor.user?.name || "Unknown"}
-                        {doctor.employeeDepartments && doctor.employeeDepartments.length > 0 && (
+                        {doctor.department && (
                           <span className="text-muted-foreground">
                             {" "}
-                            - {doctor.employeeDepartments[0].department.name}
+                            - {doctor.department.name}
                           </span>
                         )}
                       </SelectItem>

@@ -1,6 +1,6 @@
 import { hashPassword } from "better-auth/crypto";
-import { BloodGroup, Gender, PrismaClient } from "./generated/client";
 import { format } from "date-fns";
+import { BloodGroup, Gender, PrismaClient } from "./generated/client";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,6 @@ async function main() {
   await prisma.bills.deleteMany();
   await prisma.appointments.deleteMany();
   await prisma.employee_specializations.deleteMany();
-  await prisma.employee_departments.deleteMany();
   await prisma.employees.deleteMany();
   await prisma.test_types.deleteMany();
   await prisma.test_templates.deleteMany();
@@ -348,19 +347,12 @@ async function main() {
   const drSmithEmployee = await prisma.employees.create({
     data: {
       userId: drSmith.id,
+      departmentId: cardiology.id,
       bio: "Experienced cardiologist with over 15 years in interventional cardiology. Specializes in complex coronary interventions.",
       qualification: "MD, FACC, Fellowship in Interventional Cardiology",
       consultationFee: 1500,
       hospitalFee: 500,
       isAvailable: true,
-    },
-  });
-
-  await prisma.employee_departments.create({
-    data: {
-      employeeId: drSmithEmployee.id,
-      departmentId: cardiology.id,
-      isPrimary: true,
     },
   });
 
@@ -401,19 +393,12 @@ async function main() {
   const drJohnsonEmployee = await prisma.employees.create({
     data: {
       userId: drJohnson.id,
+      departmentId: orthopedics.id,
       bio: "Board-certified orthopedic surgeon specializing in sports medicine and arthroscopic surgery.",
       qualification: "MD, FAAOS, Sports Medicine Fellowship",
       consultationFee: 1200,
       hospitalFee: 400,
       isAvailable: true,
-    },
-  });
-
-  await prisma.employee_departments.create({
-    data: {
-      employeeId: drJohnsonEmployee.id,
-      departmentId: orthopedics.id,
-      isPrimary: true,
     },
   });
 
@@ -454,19 +439,12 @@ async function main() {
   const drBrownEmployee = await prisma.employees.create({
     data: {
       userId: drBrown.id,
+      departmentId: pediatrics.id,
       bio: "Compassionate pediatrician dedicated to providing comprehensive care for children from infancy through adolescence.",
       qualification: "MD, FAAP, Board Certified Pediatrician",
       consultationFee: 1000,
       hospitalFee: 300,
       isAvailable: true,
-    },
-  });
-
-  await prisma.employee_departments.create({
-    data: {
-      employeeId: drBrownEmployee.id,
-      departmentId: pediatrics.id,
-      isPrimary: true,
     },
   });
 
@@ -534,17 +512,10 @@ async function main() {
   const labTechEmployee = await prisma.employees.create({
     data: {
       userId: labTech.id,
+      departmentId: laboratory.id,
       bio: "Experienced clinical laboratory technician",
       qualification: "BS in Medical Technology, ASCP Certified",
       isAvailable: true,
-    },
-  });
-
-  await prisma.employee_departments.create({
-    data: {
-      employeeId: labTechEmployee.id,
-      departmentId: laboratory.id,
-      isPrimary: true,
     },
   });
 
@@ -863,41 +834,45 @@ async function main() {
 
   // Get all patients and doctors for appointments
   const patients = await prisma.patients.findMany({
-    where: { isActive: true }
+    where: { isActive: true },
   });
 
   const doctorEmployees = await prisma.employees.findMany({
-    where: { 
+    where: {
       consultationFee: { not: null },
-      isAvailable: true 
+      isAvailable: true,
     },
-    include: { user: true }
+    include: { user: true },
   });
 
   // Create appointments for today
   let serialCounter = 1;
-  
+
   // Use the first doctor as the assigner for all appointments
   const assignerEmployee = doctorEmployees[0];
-  
+
   for (const doctor of doctorEmployees) {
     // Create 3-5 appointments per doctor
     const appointmentCount = Math.floor(Math.random() * 3) + 3;
-    
+
     for (let i = 0; i < appointmentCount; i++) {
       const patient = patients[Math.floor(Math.random() * patients.length)];
       const appointmentHour = 9 + Math.floor(Math.random() * 8); // 9 AM to 5 PM
       const appointmentMinute = Math.floor(Math.random() * 60);
-      
+
       const appointmentDate = new Date(today);
       appointmentDate.setHours(appointmentHour, appointmentMinute, 0, 0);
-      
+
       const statusOptions = ["WAITING", "IN_CONSULTATION", "COMPLETED"];
-      const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
-      
+      const status =
+        statusOptions[Math.floor(Math.random() * statusOptions.length)];
+
       const appointmentTypeOptions = ["NEW", "FOLLOWUP"];
-      const appointmentType = appointmentTypeOptions[Math.floor(Math.random() * appointmentTypeOptions.length)];
-      
+      const appointmentType =
+        appointmentTypeOptions[
+          Math.floor(Math.random() * appointmentTypeOptions.length)
+        ];
+
       await prisma.appointments.create({
         data: {
           patientId: patient.id,

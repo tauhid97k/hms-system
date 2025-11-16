@@ -4,8 +4,9 @@ import { paginationSchema } from "@/schema/paginationSchema";
 import { createPatientSchema, updatePatientSchema } from "@/schema/patientSchema";
 import { os } from "@orpc/server";
 import { object, string } from "yup";
+import { Prisma, Gender, BloodGroup } from "../prisma/generated/client";
 
-// Helper function to generate next patient ID with race condition handling
+// Helper function to generate next patient ID with database-level locking
 // Format: PID25-000001 (PID + Year + 6-digit sequential)
 // Can handle 999,999 patients per year
 async function generatePatientId(): Promise<string> {
@@ -13,56 +14,29 @@ async function generatePatientId(): Promise<string> {
   const yearSuffix = currentYear.toString().slice(-2); // Last 2 digits of year
   const prefix = `PID${yearSuffix}-`;
 
-  // Use transaction with retry logic to handle race conditions
-  let attempts = 0;
-  const maxAttempts = 5;
+  return await prisma.$transaction(async (tx) => {
+    // Lock the last patient row for this year using FOR UPDATE
+    // This prevents race conditions when multiple requests try to generate IDs simultaneously
+    const lastPatient = await tx.$queryRaw<Array<{ patientId: string }>>`
+      SELECT "patientId"
+      FROM patients
+      WHERE "patientId" LIKE ${prefix + "%"}
+      ORDER BY "patientId" DESC
+      FOR UPDATE
+      LIMIT 1
+    `;
 
-  while (attempts < maxAttempts) {
-    try {
-      // Find the last patient ID for current year
-      const lastPatient = await prisma.patients.findFirst({
-        where: {
-          patientId: {
-            startsWith: prefix,
-          },
-        },
-        orderBy: { patientId: "desc" },
-        select: { patientId: true },
-      });
+    let nextSequential = 1;
 
-      let nextSequential = 1;
-
-      if (lastPatient) {
-        // Extract the sequential number from the last patient ID
-        const lastSequential = parseInt(lastPatient.patientId.split("-")[1]);
-        nextSequential = lastSequential + 1;
-      }
-
-      // Format: PID25-000001
-      const newPatientId = `${prefix}${nextSequential.toString().padStart(6, "0")}`;
-
-      // Check if this ID already exists (race condition check)
-      const existing = await prisma.patients.findFirst({
-        where: { patientId: newPatientId },
-      });
-
-      if (!existing) {
-        return newPatientId;
-      }
-
-      // If exists, retry
-      attempts++;
-    } catch (error) {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        throw new Error("Failed to generate unique patient ID after multiple attempts");
-      }
-      // Wait a bit before retrying
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (lastPatient.length > 0) {
+      // Extract the sequential number from the last patient ID
+      const lastSequential = parseInt(lastPatient[0].patientId.split("-")[1]);
+      nextSequential = lastSequential + 1;
     }
-  }
 
-  throw new Error("Failed to generate unique patient ID");
+    // Format: PID25-000001
+    return `${prefix}${nextSequential.toString().padStart(6, "0")}`;
+  });
 }
 
 // Get all patients with pagination
@@ -86,12 +60,12 @@ export const getPatients = os
     const { skip, take } = getPaginationQuery(input);
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.patientsWhereInput = {};
 
     // Search filter (name, phone, patientId)
     if (input.search) {
       where.OR = [
-        { name: { contains: input.search, mode: "insensitive" } },
+        { name: { contains: input.search, mode: "insensitive" as const } },
         { phone: { contains: input.search } },
         { patientId: { contains: input.search } },
       ];
@@ -99,12 +73,12 @@ export const getPatients = os
 
     // Gender filter
     if (input.gender && input.gender !== "all") {
-      where.gender = input.gender;
+      where.gender = input.gender as Gender;
     }
 
     // Blood group filter
     if (input.bloodGroup && input.bloodGroup !== "all") {
-      where.bloodGroup = input.bloodGroup;
+      where.bloodGroup = input.bloodGroup as BloodGroup;
     }
 
     // Active filter
@@ -112,7 +86,7 @@ export const getPatients = os
       where.isActive = input.isActive === "true";
     }
 
-    const [patients, total] = await Promise.all([
+    const [patients, total] = await prisma.$transaction([
       prisma.patients.findMany({
         where,
         skip,
@@ -282,11 +256,11 @@ export const deletePatient = os
 
     // Check if patient has any associations
     const totalAssociations =
-      patient._count.visits + patient._count.bills + patient._count.documents;
+      patient._count.appointments + patient._count.bills + patient._count.documents;
 
     if (totalAssociations > 0) {
       throw new Error(
-        `Cannot delete patient. Patient has ${totalAssociations} associated records (visits, bills, or documents). Please remove them first or deactivate the patient instead.`
+        `Cannot delete patient. Patient has ${totalAssociations} associated records (appointments, bills, or documents). Please remove them first or deactivate the patient instead.`
       );
     }
 

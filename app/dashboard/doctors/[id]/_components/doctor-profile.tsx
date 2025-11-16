@@ -142,15 +142,13 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <p className="mb-2 text-sm font-medium text-muted-foreground">
-                    Departments
+                    Department
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {doctor.employeeDepartments?.length ? (
-                      doctor.employeeDepartments.map((ed) => (
-                        <Badge key={ed.id} variant="secondary">
-                          {ed.department.name}
-                        </Badge>
-                      ))
+                    {doctor.department ? (
+                      <Badge variant="secondary">
+                        {doctor.department.name}
+                      </Badge>
                     ) : (
                       <span className="text-sm text-muted-foreground">-</span>
                     )}

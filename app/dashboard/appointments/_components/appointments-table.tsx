@@ -51,13 +51,10 @@ type Appointment = {
       name: string;
       email: string;
     } | null;
-    employeeDepartments?: Array<{
+    department?: {
       id: string;
-      department: {
-        id: string;
-        name: string;
-      };
-    }>;
+      name: string;
+    } | null;
   };
 };
 
@@ -147,15 +144,15 @@ export function AppointmentsTable({
       ),
     },
     {
-      accessorKey: "doctor.employeeDepartments",
+      accessorKey: "doctor.department",
       header: "Department",
       cell: ({ row }) => {
-        const departments = row.original.doctor.employeeDepartments || [];
-        if (departments.length === 0) {
+        const department = row.original.doctor.department;
+        if (!department) {
           return <span className="text-sm text-muted-foreground">-</span>;
         }
         return (
-          <Badge variant="secondary">{departments[0].department.name}</Badge>
+          <Badge variant="secondary">{department.name}</Badge>
         );
       },
     },

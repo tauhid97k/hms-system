@@ -1,18 +1,11 @@
-import { EventEmitter } from "events";
+import { startOfDay } from "date-fns";
+import { publishSSE } from "./orpc-publisher";
 import prisma from "./prisma";
-import { startOfDay, format } from "date-fns";
-
-// Global event emitter for queue updates
-export const queueEmitter = new EventEmitter();
-
-// Fix memory leak: Set max listeners to support many concurrent SSE connections
-// With 50 doctors × 20 connections each = 1000 listeners max
-queueEmitter.setMaxListeners(1000);
 
 // Type-safe event data
 export interface QueueUpdateEvent {
   doctorId: string;
-  queue: any[];
+  queue: Awaited<ReturnType<typeof getQueueForDoctor>>;
   timestamp: Date;
 }
 
@@ -64,20 +57,28 @@ export async function getQueueForDoctor(doctorId: string) {
 }
 
 // Helper to emit queue updates (called after DB changes)
+// Now uses oRPC Publisher for multi-server support via Redis Pub/Sub
 export async function emitQueueUpdate(doctorId: string) {
   try {
     const queue = await getQueueForDoctor(doctorId);
 
-    // Emit event (non-blocking)
-    queueEmitter.emit("queue-update", {
-      doctorId,
-      queue,
-      timestamp: new Date(),
-    } as QueueUpdateEvent);
+    // Calculate queue statistics
+    const queuePosition = queue.length;
+    const estimatedWait = queuePosition * 15; // Assume 15 min per patient
 
-    console.log(`Queue update emitted for doctor: ${doctorId}`);
+    // Publish SSE event (works across multiple servers!)
+    await publishSSE(`doctor:${doctorId}`, {
+      doctorId,
+      queuePosition,
+      estimatedWait,
+      timestamp: new Date(),
+    });
+
+    console.log(
+      `✅ Queue update published for doctor: ${doctorId} (${queuePosition} patients)`,
+    );
   } catch (error) {
-    console.error("Error emitting queue update:", error);
+    console.error("❌ Error publishing queue update:", error);
   }
 }
 
@@ -87,7 +88,6 @@ export async function emitQueueUpdate(doctorId: string) {
  */
 export async function getNextSerialNumber(doctorId: string): Promise<number> {
   const todayStart = startOfDay(new Date());
-  const todayDate = format(todayStart, "yyyy-MM-dd");
 
   return await prisma.$transaction(async (tx) => {
     // Lock the last appointment row for this doctor today
@@ -161,7 +161,7 @@ export async function generateBillNumber(): Promise<string> {
       let nextNumber = 1;
       if (lastBill.length > 0) {
         const lastNumber = parseInt(
-          lastBill[0].billNumber.split("-").pop() || "0"
+          lastBill[0].billNumber.split("-").pop() || "0",
         );
         nextNumber = lastNumber + 1;
       }
@@ -171,7 +171,7 @@ export async function generateBillNumber(): Promise<string> {
     {
       maxWait: 5000, // Maximum time to wait for a transaction slot
       timeout: 10000, // Maximum time for the transaction to complete
-    }
+    },
   );
 }
 
@@ -182,7 +182,7 @@ export async function generateBillNumber(): Promise<string> {
 export async function reAdjustQueuePositions(
   doctorId: string,
   appointmentDate: Date,
-  removedPosition: number
+  removedPosition: number,
 ): Promise<void> {
   const todayStart = startOfDay(appointmentDate);
 
@@ -239,7 +239,7 @@ export async function removeFromQueue(appointmentId: string): Promise<void> {
       await reAdjustQueuePositions(
         appointment.doctorId,
         appointment.appointmentDate,
-        appointment.queuePosition
+        appointment.queuePosition,
       );
     }
   });

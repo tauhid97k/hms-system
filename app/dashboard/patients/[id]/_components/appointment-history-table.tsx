@@ -81,11 +81,11 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-          PENDING: { label: "Pending", variant: "secondary" },
+        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "success" | "warning" | "outline" }> = {
+          PENDING: { label: "Pending", variant: "warning" },
           IN_PROGRESS: { label: "In Progress", variant: "default" },
-          COMPLETED: { label: "Completed", variant: "default" },
-          CANCELLED: { label: "Cancelled", variant: "secondary" },
+          COMPLETED: { label: "Completed", variant: "success" },
+          CANCELLED: { label: "Cancelled", variant: "destructive" },
         };
 
         const status = statusMap[row.original.status] || {

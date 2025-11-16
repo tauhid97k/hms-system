@@ -15,6 +15,7 @@ const badgeVariants = cva(
         warning:
           "bg-amber-500 text-primary-foreground dark:bg-amber-500/70",
         destructive: "bg-destructive/70 text-white",
+        outline: "border border-border bg-transparent text-foreground",
       },
       size: {
         default: "px-3 py-1",

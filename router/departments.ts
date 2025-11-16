@@ -1,22 +1,13 @@
-import prisma from "@/lib/prisma";
 import { getPaginationQuery } from "@/lib/pagination";
-import { paginationSchema } from "@/schema/paginationSchema";
+import prisma from "@/lib/prisma";
 import {
   createDepartmentSchema,
   updateDepartmentSchema,
 } from "@/schema/departmentSchema";
+import { paginationSchema } from "@/schema/paginationSchema";
 import { os } from "@orpc/server";
 import { object, string } from "yup";
-import {
-  cacheService,
-  CacheKeys,
-  CacheTTL,
-} from "@/lib/services/cache.service";
-import {
-  measureQuery,
-  createCacheKey,
-  createPaginatedResponse,
-} from "@/lib/middleware/orpc-middleware";
+import { Prisma } from "../prisma/generated/client";
 
 // Get all departments with pagination
 export const getDepartments = os
@@ -30,58 +21,47 @@ export const getDepartments = os
       object({
         search: string().optional(),
         isActive: string().optional(), // "true" | "false" | "all"
-      })
-    )
+      }),
+    ),
   )
   .handler(async ({ input }) => {
-    // Create cache key from input params
-    const cacheKey = createCacheKey("departments:list", input);
+    const { skip, take, page, limit } = getPaginationQuery(input);
 
-    // Try to get from cache
-    return await cacheService.getOrSet(
-      cacheKey,
-      async () => {
-        const { skip, take } = getPaginationQuery(input);
+    // Build where clause
+    const where: Prisma.departmentsWhereInput = {};
 
-        // Build where clause
-        const where: any = {};
+    // Search filter
+    if (input.search) {
+      where.OR = [
+        { name: { contains: input.search, mode: "insensitive" as const } },
+        { code: { contains: input.search, mode: "insensitive" as const } },
+      ];
+    }
 
-        // Search filter
-        if (input.search) {
-          where.OR = [
-            { name: { contains: input.search, mode: "insensitive" } },
-            { code: { contains: input.search, mode: "insensitive" } },
-          ];
-        }
+    // Active filter
+    if (input.isActive && input.isActive !== "all") {
+      where.isActive = input.isActive === "true";
+    }
 
-        // Active filter
-        if (input.isActive && input.isActive !== "all") {
-          where.isActive = input.isActive === "true";
-        }
+    const [departments, total] = await prisma.$transaction([
+      prisma.departments.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.departments.count({ where }),
+    ]);
 
-        const [departments, total] = await measureQuery(
-          "getDepartments",
-          async () =>
-            Promise.all([
-              prisma.departments.findMany({
-                where,
-                skip,
-                take,
-                orderBy: { createdAt: "desc" },
-              }),
-              prisma.departments.count({ where }),
-            ])
-        );
-
-        return createPaginatedResponse(
-          departments,
-          input.page,
-          input.limit,
-          total
-        );
+    return {
+      data: departments,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-      CacheTTL.MEDIUM // 5 minutes
-    );
+    };
   });
 
 // Get single department by ID
@@ -93,32 +73,22 @@ export const getDepartment = os
   })
   .input(string().required())
   .handler(async ({ input }) => {
-    const cacheKey = CacheKeys.department(input);
-
-    return await cacheService.getOrSet(
-      cacheKey,
-      async () => {
-        const department = await measureQuery("getDepartment", async () =>
-          prisma.departments.findUnique({
-            where: { id: input },
-            include: {
-              _count: {
-                select: {
-                  employeeDepartments: true,
-                },
-              },
-            },
-          })
-        );
-
-        if (!department) {
-          throw new Error("Department not found");
-        }
-
-        return department;
+    const department = await prisma.departments.findUnique({
+      where: { id: input },
+      include: {
+        _count: {
+          select: {
+            employees: true,
+          },
+        },
       },
-      CacheTTL.LONG // 1 hour
-    );
+    });
+
+    if (!department) {
+      throw new Error("Department not found");
+    }
+
+    return department;
   });
 
 // Create department
@@ -146,19 +116,14 @@ export const createDepartment = os
       }
     }
 
-    const department = await measureQuery("createDepartment", async () =>
-      prisma.departments.create({
-        data: {
-          name: input.name,
-          code: input.code.toUpperCase(), // Ensure uppercase
-          description: input.description,
-          isActive: input.isActive ?? true,
-        },
-      })
-    );
-
-    // Invalidate departments list cache
-    await cacheService.invalidatePattern("departments:list:*");
+    const department = await prisma.departments.create({
+      data: {
+        name: input.name,
+        code: input.code.toUpperCase(), // Ensure uppercase
+        description: input.description,
+        isActive: input.isActive ?? true,
+      },
+    });
 
     return department;
   });
@@ -173,7 +138,7 @@ export const updateDepartment = os
   .input(
     object({
       id: string().required(),
-    }).concat(updateDepartmentSchema)
+    }).concat(updateDepartmentSchema),
   )
   .handler(async ({ input }) => {
     const { id, ...data } = input;
@@ -219,18 +184,10 @@ export const updateDepartment = os
       updateData.code = updateData.code.toUpperCase();
     }
 
-    const department = await measureQuery("updateDepartment", async () =>
-      prisma.departments.update({
-        where: { id },
-        data: updateData,
-      })
-    );
-
-    // Invalidate caches
-    await Promise.all([
-      cacheService.delete(CacheKeys.department(id)),
-      cacheService.invalidatePattern("departments:list:*"),
-    ]);
+    const department = await prisma.departments.update({
+      where: { id },
+      data: updateData,
+    });
 
     return department;
   });
@@ -250,7 +207,7 @@ export const deleteDepartment = os
       include: {
         _count: {
           select: {
-            employeeDepartments: true,
+            employees: true,
           },
         },
       },
@@ -261,25 +218,17 @@ export const deleteDepartment = os
     }
 
     // Check if department has any associations
-    const totalAssociations = department._count.employeeDepartments;
+    const totalAssociations = department._count.employees;
 
     if (totalAssociations > 0) {
       throw new Error(
-        `Cannot delete department. It has ${totalAssociations} associated records (users, doctors, or labs). Please reassign or remove them first.`
+        `Cannot delete department. It has ${totalAssociations} associated records (users, doctors, or labs). Please reassign or remove them first.`,
       );
     }
 
-    await measureQuery("deleteDepartment", async () =>
-      prisma.departments.delete({
-        where: { id: input },
-      })
-    );
-
-    // Invalidate caches
-    await Promise.all([
-      cacheService.delete(CacheKeys.department(input)),
-      cacheService.invalidatePattern("departments:list:*"),
-    ]);
+    await prisma.departments.delete({
+      where: { id: input },
+    });
 
     return { success: true, message: "Department deleted successfully" };
   });
@@ -301,18 +250,10 @@ export const toggleDepartmentStatus = os
       throw new Error("Department not found");
     }
 
-    const updated = await measureQuery("toggleDepartmentStatus", async () =>
-      prisma.departments.update({
-        where: { id: input },
-        data: { isActive: !department.isActive },
-      })
-    );
-
-    // Invalidate caches
-    await Promise.all([
-      cacheService.delete(CacheKeys.department(input)),
-      cacheService.invalidatePattern("departments:list:*"),
-    ]);
+    const updated = await prisma.departments.update({
+      where: { id: input },
+      data: { isActive: !department.isActive },
+    });
 
     return updated;
   });

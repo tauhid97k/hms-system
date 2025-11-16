@@ -21,13 +21,21 @@ import type { Patient } from "@/lib/dataTypes";
 type CreatePatientFormData = InferType<typeof createPatientSchema>;
 type UpdatePatientFormData = InferType<typeof updatePatientSchema>;
 
-type PatientFormProps = {
-  mode: "create" | "edit";
-  patient?: Patient;
-  onSubmit: (data: CreatePatientFormData | UpdatePatientFormData) => Promise<void>;
-  onCancel: () => void;
-  isLoading: boolean;
-};
+type PatientFormProps =
+  | {
+      mode: "create";
+      patient?: never;
+      onSubmit: (data: CreatePatientFormData) => Promise<void>;
+      onCancel: () => void;
+      isLoading: boolean;
+    }
+  | {
+      mode: "edit";
+      patient: Patient;
+      onSubmit: (data: UpdatePatientFormData) => Promise<void>;
+      onCancel: () => void;
+      isLoading: boolean;
+    };
 
 export function PatientForm({
   mode,
@@ -64,9 +72,11 @@ export function PatientForm({
   });
 
   const handleSubmit = async (data: CreatePatientFormData | UpdatePatientFormData) => {
-    await onSubmit(data);
     if (mode === "create") {
+      await onSubmit(data as CreatePatientFormData);
       form.reset();
+    } else {
+      await onSubmit(data as UpdatePatientFormData);
     }
   };
 

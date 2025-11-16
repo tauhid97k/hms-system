@@ -1,14 +1,11 @@
 import Redis from "ioredis";
-import { LRUCache } from "lru-cache";
 
 /**
  * Redis Cache Service
  *
- * Provides a unified caching interface with Redis as primary cache
- * and LRU as fallback when Redis is unavailable.
+ * Provides a unified caching interface with Redis.
  *
  * Features:
- * - Automatic fallback to in-memory cache
  * - Type-safe operations
  * - TTL support
  * - Batch operations
@@ -31,35 +28,38 @@ const redisClient = new Redis({
   lazyConnect: true,
 });
 
-// LRU cache as fallback
-const lruCache = new LRUCache<string, string>({
-  max: 500, // Maximum 500 items
-  maxSize: 50 * 1024 * 1024, // 50MB max size
-  sizeCalculation: (value) => value.length,
-  ttl: 1000 * 60 * 5, // 5 minutes default TTL
-});
-
 // Track Redis connection status
 let isRedisConnected = false;
+let hasLoggedRedisWarning = false; // Flag to prevent spam
 
 redisClient.on("connect", () => {
   isRedisConnected = true;
+  hasLoggedRedisWarning = false; // Reset flag on successful connection
   console.log("✅ Redis connected successfully");
 });
 
 redisClient.on("error", (err) => {
   isRedisConnected = false;
-  console.warn("⚠️ Redis error, falling back to LRU cache:", err.message);
+  if (!hasLoggedRedisWarning) {
+    console.warn("⚠️ Redis error:", err.message);
+    hasLoggedRedisWarning = true;
+  }
 });
 
 redisClient.on("close", () => {
   isRedisConnected = false;
-  console.warn("⚠️ Redis connection closed, using LRU cache");
+  if (!hasLoggedRedisWarning) {
+    console.warn("⚠️ Redis connection closed");
+    hasLoggedRedisWarning = true;
+  }
 });
 
 // Lazy connect to Redis
 redisClient.connect().catch((err) => {
-  console.warn("⚠️ Redis connection failed, using LRU cache:", err.message);
+  if (!hasLoggedRedisWarning) {
+    console.warn("⚠️ Redis connection failed:", err.message);
+    hasLoggedRedisWarning = true;
+  }
 });
 
 /**
@@ -82,16 +82,11 @@ export class CacheService {
    */
   async get<T>(key: string): Promise<T | null> {
     try {
-      if (isRedisConnected) {
-        const value = await redisClient.get(key);
-        if (value) {
-          return JSON.parse(value) as T;
-        }
+      if (!isRedisConnected) {
         return null;
       }
 
-      // Fallback to LRU
-      const value = lruCache.get(key);
+      const value = await redisClient.get(key);
       if (value) {
         return JSON.parse(value) as T;
       }
@@ -110,14 +105,12 @@ export class CacheService {
    */
   async set<T>(key: string, value: T, ttlSeconds: number = 300): Promise<void> {
     try {
-      const serialized = JSON.stringify(value);
-
-      if (isRedisConnected) {
-        await redisClient.setex(key, ttlSeconds, serialized);
-      } else {
-        // Fallback to LRU
-        lruCache.set(key, serialized, { ttl: ttlSeconds * 1000 });
+      if (!isRedisConnected) {
+        return;
       }
+
+      const serialized = JSON.stringify(value);
+      await redisClient.setex(key, ttlSeconds, serialized);
     } catch (error) {
       console.error(`Cache set error for key "${key}":`, error);
     }
@@ -128,11 +121,11 @@ export class CacheService {
    */
   async delete(key: string): Promise<void> {
     try {
-      if (isRedisConnected) {
-        await redisClient.del(key);
-      } else {
-        lruCache.delete(key);
+      if (!isRedisConnected) {
+        return;
       }
+
+      await redisClient.del(key);
     } catch (error) {
       console.error(`Cache delete error for key "${key}":`, error);
     }
@@ -141,23 +134,40 @@ export class CacheService {
   /**
    * Delete multiple keys matching a pattern
    * @param pattern Pattern to match (e.g., "doctor:*", "queue:*")
+   * Uses SCAN instead of KEYS for production safety (non-blocking)
    */
   async invalidatePattern(pattern: string): Promise<void> {
     try {
-      if (isRedisConnected) {
-        const keys = await redisClient.keys(pattern);
-        if (keys.length > 0) {
-          await redisClient.del(...keys);
+      if (!isRedisConnected) {
+        return;
+      }
+
+      // Use SCAN instead of KEYS (non-blocking, production-safe)
+      let cursor = "0";
+      const keysToDelete: string[] = [];
+
+      do {
+        const [newCursor, keys] = await redisClient.scan(
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          100, // Scan 100 keys at a time
+        );
+
+        cursor = newCursor;
+        keysToDelete.push(...keys);
+
+        // Delete in batches to avoid blocking
+        if (keysToDelete.length >= 100) {
+          await redisClient.del(...keysToDelete);
+          keysToDelete.length = 0;
         }
-      } else {
-        // LRU doesn't support pattern matching, so clear all if pattern is wildcard
-        if (pattern.endsWith("*")) {
-          const prefix = pattern.slice(0, -1);
-          const keys = Array.from(lruCache.keys()).filter((key) =>
-            key.startsWith(prefix)
-          );
-          keys.forEach((key) => lruCache.delete(key));
-        }
+      } while (cursor !== "0");
+
+      // Delete remaining keys
+      if (keysToDelete.length > 0) {
+        await redisClient.del(...keysToDelete);
       }
     } catch (error) {
       console.error(`Cache invalidate pattern error for "${pattern}":`, error);
@@ -170,7 +180,7 @@ export class CacheService {
   async getOrSet<T>(
     key: string,
     fetcher: () => Promise<T>,
-    ttlSeconds: number = 300
+    ttlSeconds: number = 300,
   ): Promise<T> {
     // Try to get from cache
     const cached = await this.get<T>(key);
@@ -183,7 +193,7 @@ export class CacheService {
 
     // Store in cache (fire and forget)
     this.set(key, data, ttlSeconds).catch((err) =>
-      console.error("Cache set error:", err)
+      console.error("Cache set error:", err),
     );
 
     return data;
@@ -201,10 +211,11 @@ export class CacheService {
    */
   async clear(): Promise<void> {
     try {
-      if (isRedisConnected) {
-        await redisClient.flushdb();
+      if (!isRedisConnected) {
+        return;
       }
-      lruCache.clear();
+
+      await redisClient.flushdb();
     } catch (error) {
       console.error("Cache clear error:", error);
     }
@@ -220,11 +231,6 @@ export class CacheService {
         host: process.env.REDIS_HOST || "localhost",
         port: process.env.REDIS_PORT || "6379",
       },
-      lru: {
-        size: lruCache.size,
-        max: lruCache.max,
-        itemCount: lruCache.size,
-      },
     };
   }
 }
@@ -239,8 +245,7 @@ export const CacheKeys = {
   // Doctors
   doctor: (id: string) => `doctor:${id}`,
   doctorFees: (id: string) => `doctor:${id}:fees`,
-  doctorsList: (page: number, limit: number) =>
-    `doctors:list:${page}:${limit}`,
+  doctorsList: (page: number, limit: number) => `doctors:list:${page}:${limit}`,
 
   // Departments
   department: (id: string) => `department:${id}`,

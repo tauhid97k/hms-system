@@ -1,9 +1,13 @@
 import prisma from "@/lib/prisma";
 import { getPaginationQuery } from "@/lib/pagination";
 import { paginationSchema } from "@/schema/paginationSchema";
-import { createSpecializationSchema, updateSpecializationSchema } from "@/schema/specializationSchema";
+import {
+  createSpecializationSchema,
+  updateSpecializationSchema,
+} from "@/schema/specializationSchema";
 import { os } from "@orpc/server";
 import { object, string } from "yup";
+import { Prisma } from "../prisma/generated/client";
 
 // Get all specializations with pagination
 export const getSpecializations = os
@@ -24,13 +28,13 @@ export const getSpecializations = os
     const { skip, take } = getPaginationQuery(input);
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.specializationsWhereInput = {};
 
     // Search filter
     if (input.search) {
       where.OR = [
-        { name: { contains: input.search, mode: "insensitive" } },
-        { code: { contains: input.search, mode: "insensitive" } },
+        { name: { contains: input.search, mode: "insensitive" as const } },
+        { code: { contains: input.search, mode: "insensitive" as const } },
       ];
     }
 
@@ -39,7 +43,7 @@ export const getSpecializations = os
       where.isActive = input.isActive === "true";
     }
 
-    const [specializations, total] = await Promise.all([
+    const [specializations, total] = await prisma.$transaction([
       prisma.specializations.findMany({
         where,
         skip,

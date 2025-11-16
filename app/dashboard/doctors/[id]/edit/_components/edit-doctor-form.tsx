@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DoctorForm } from "../../../_components/doctor-form";
+import { UpdateDoctorForm } from "../../../_components/update-doctor-form";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ export function EditDoctorForm({ doctor, departments, specializations }: EditDoc
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: UpdateDoctorFormData) => {
     setIsLoading(true);
     const { error } = await safeClient.doctors.update(data);
 
@@ -45,8 +45,7 @@ export function EditDoctorForm({ doctor, departments, specializations }: EditDoc
   };
 
   return (
-    <DoctorForm
-      mode="edit"
+    <UpdateDoctorForm
       doctor={doctor}
       departments={departments}
       specializations={specializations}

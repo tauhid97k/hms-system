@@ -74,9 +74,9 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
         <div className="flex items-center justify-between">
           <CardTitle>
             Dr. {doctor.user?.name || "Unknown"}
-            {doctor.employeeDepartments && doctor.employeeDepartments[0] && (
+            {doctor.department && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({doctor.employeeDepartments[0].department.name})
+                ({doctor.department.name})
               </span>
             )}
           </CardTitle>

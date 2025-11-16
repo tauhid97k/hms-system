@@ -1,22 +1,27 @@
 import prisma from "@/lib/prisma";
-import { os } from "@orpc/server";
-import { string, number, object } from "yup";
-import {
-  createAppointmentSchema,
-  updateAppointmentSchema,
-  updateAppointmentStatusSchema,
-  callNextPatientSchema,
-} from "@/schema/appointmentSchema";
 import {
   emitQueueUpdate,
-  getNextSerialNumber,
-  getNextQueuePosition,
   generateBillNumber,
+  getNextQueuePosition,
+  getNextSerialNumber,
   getQueueForDoctor,
   removeFromQueue,
 } from "@/lib/queue-emitter";
+import {
+  callNextPatientSchema,
+  createAppointmentSchema,
+  updateAppointmentSchema,
+  updateAppointmentStatusSchema,
+} from "@/schema/appointmentSchema";
+import { os } from "@orpc/server";
 import { format } from "date-fns";
-import { AppointmentType, AppointmentStatus, AppointmentEventType } from "../prisma/generated/client";
+import { number, object, string } from "yup";
+import {
+  AppointmentEventType,
+  AppointmentStatus,
+  AppointmentType,
+  Prisma,
+} from "../prisma/generated/client";
 
 // Get all appointments with pagination and filters
 export const getAppointments = os
@@ -35,17 +40,17 @@ export const getAppointments = os
         .oneOf(["WAITING", "IN_CONSULTATION", "COMPLETED", "CANCELLED"])
         .optional(),
       appointmentDate: string().optional(),
-    })
+    }),
   )
   .handler(async ({ input }) => {
     const { page, limit, patientId, doctorId, status, appointmentDate } = input;
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.appointmentsWhereInput = {};
     if (patientId) where.patientId = patientId;
     if (doctorId) where.doctorId = doctorId;
-    if (status) where.status = status;
+    if (status) where.status = status as AppointmentStatus;
     if (appointmentDate) {
       const date = new Date(appointmentDate);
       const startOfDay = new Date(date.setHours(0, 0, 0, 0));
@@ -53,7 +58,7 @@ export const getAppointments = os
       where.appointmentDate = { gte: startOfDay, lte: endOfDay };
     }
 
-    const [appointments, total] = await Promise.all([
+    const [appointments, total] = await prisma.$transaction([
       prisma.appointments.findMany({
         where,
         include: {
@@ -76,14 +81,10 @@ export const getAppointments = os
                   email: true,
                 },
               },
-              employeeDepartments: {
-                include: {
-                  department: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
+              department: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
@@ -139,6 +140,12 @@ export const getAppointment = os
                 id: true,
                 name: true,
                 email: true,
+              },
+            },
+            department: {
+              select: {
+                id: true,
+                name: true,
               },
             },
           },
@@ -213,12 +220,12 @@ export const getAppointmentEvents = os
       id: string().required(),
       page: number().default(1).min(1),
       limit: number().default(20).min(1).max(100),
-    })
+    }),
   )
   .handler(async ({ input }) => {
     const skip = (input.page - 1) * input.limit;
 
-    const [events, total] = await Promise.all([
+    const [events, total] = await prisma.$transaction([
       prisma.appointment_events.findMany({
         where: { appointmentId: input.id },
         include: {
@@ -271,18 +278,15 @@ export const getAppointmentPrescriptions = os
                 name: true,
                 genericName: true,
                 strength: true,
-                form: true,
+                type: true,
+                manufacturer: true,
               },
             },
             instruction: {
               select: {
                 id: true,
-                label: true,
-                morning: true,
-                afternoon: true,
-                evening: true,
-                night: true,
-                beforeMeal: true,
+                name: true,
+                description: true,
               },
             },
           },

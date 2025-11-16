@@ -1,54 +1,63 @@
-# Event-Driven Architecture - HMS Documentation
+# Audit Logging Pattern - HMS Documentation
 
 ## Overview
 
-This Hospital Management System uses **Event Sourcing** pattern to track the complete patient journey. Every significant action is logged as an immutable event in the `visit_events` table.
+This Hospital Management System uses **Audit Logging** pattern (not true event sourcing) to track the complete patient journey. Every significant action is logged as an immutable event in the `appointment_events` table.
 
-## Why Event Sourcing?
+**Note:** This is audit logging, not event sourcing. The `appointments` table is the source of truth, and events provide an audit trail.
+
+## Why Audit Logging?
 
 ✅ **Complete Audit Trail** - Every action is recorded with timestamp and performer
-✅ **Timeline Reconstruction** - Rebuild complete patient journey at any time
+✅ **Timeline Reconstruction** - View complete patient journey at any time
 ✅ **Duration Calculations** - Measure time between events (e.g., consultation duration)
-✅ **State Machine Support** - Validate workflow transitions
-✅ **Compliance & Legal** - Required for medical record keeping
+✅ **Compliance & Legal** - Required for medical record keeping (HIPAA)
 ✅ **Analytics** - Track performance metrics (average wait time, etc.)
+✅ **Debugging** - Troubleshoot issues by reviewing event history
+
+**Note:** Unlike true event sourcing, the `appointments` table stores the current state directly. Events are logged after state changes for audit purposes.
 
 ## Database Schema
 
-### `visit_events` Table
+### `appointment_events` Table
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | String (ULID) | Unique event identifier |
-| `visitId` | String | Foreign key to visits |
-| `eventType` | VisitEventType (Enum) | Type of event |
-| `description` | String (Optional) | Human-readable description |
-| `metadata` | JSON (Optional) | Flexible data (billId, testId, fileUrl, etc.) |
-| `performedBy` | String (Optional) | User who performed action |
-| `performedAt` | DateTime | When event occurred |
+| Column          | Type                        | Description                                   |
+| --------------- | --------------------------- | --------------------------------------------- |
+| `id`            | String (ULID)               | Unique event identifier                       |
+| `appointmentId` | String                      | Foreign key to appointments                   |
+| `eventType`     | AppointmentEventType (Enum) | Type of event                                 |
+| `description`   | String (Optional)           | Human-readable description                    |
+| `metadata`      | JSON (Optional)             | Flexible data (billId, testId, fileUrl, etc.) |
+| `performedBy`   | String (Optional)           | User who performed action                     |
+| `performedAt`   | DateTime                    | When event occurred                           |
 
 ### Event Types (34 total)
 
 #### Visit Registration
+
 - `VISIT_REGISTERED` - Patient registered at reception
 - `VISIT_ASSIGNED` - Assigned to doctor
 
 #### Queue Management
+
 - `QUEUE_JOINED` - Added to waiting queue
 - `QUEUE_CALLED` - Called from waiting area
 - `QUEUE_SKIPPED` - Missed their turn
 
 #### Consultation Flow
+
 - `ENTERED_ROOM` - Patient entered consultation
 - `EXITED_ROOM` - Patient left consultation
 - `CONSULTATION_COMPLETED` - Consultation finished
 
 #### Clinical Actions
+
 - `PRESCRIPTION_GIVEN` - Doctor prescribed medications
 - `TESTS_ORDERED` - Lab tests ordered
 - `REFERRAL_GIVEN` - Referred to specialist
 
 #### Billing Events
+
 - `CONSULTATION_BILLED` - Consultation fee billed
 - `TESTS_BILLED` - Lab tests billed
 - `PAYMENT_RECEIVED` - Full payment completed
@@ -56,6 +65,7 @@ This Hospital Management System uses **Event Sourcing** pattern to track the com
 - `PAYMENT_REFUNDED` - Refund processed
 
 #### Lab/Test Workflow
+
 - `TEST_SAMPLE_COLLECTED` - Sample collected
 - `TEST_IN_PROGRESS` - Lab processing
 - `TEST_COMPLETED` - Test finished
@@ -65,15 +75,18 @@ This Hospital Management System uses **Event Sourcing** pattern to track the com
 - `REPORT_DELIVERED` - Report given to patient
 
 #### Document Events
-- `DOCUMENT_UPLOADED` - File uploaded
-- `DOCUMENT_SHARED` - Document shared
 
-#### Visit Completion
-- `VISIT_COMPLETED` - Visit fully closed
-- `VISIT_CANCELLED` - Visit cancelled
-- `VISIT_RESCHEDULED` - Visit rescheduled
+- `FILE_UPLOADED` - File uploaded
+- `FILE_SHARED` - File shared
+
+#### Appointment Completion
+
+- `APPOINTMENT_COMPLETED` - Appointment fully closed
+- `APPOINTMENT_CANCELLED` - Appointment cancelled
+- `APPOINTMENT_RESCHEDULED` - Appointment rescheduled
 
 #### Follow-up
+
 - `FOLLOWUP_SCHEDULED` - Follow-up appointment booked
 - `FOLLOWUP_REMINDER_SENT` - Reminder notification sent
 
@@ -82,19 +95,19 @@ This Hospital Management System uses **Event Sourcing** pattern to track the com
 ### 1. Logging Events
 
 ```typescript
-import { logVisitEvent } from "@/lib/visit-events";
+import { logAppointmentEvent } from "@/lib/appointment-events";
 
 // When patient enters room
-await logVisitEvent({
-  visitId: "visit_123",
+await logAppointmentEvent({
+  appointmentId: "appointment_123",
   eventType: "ENTERED_ROOM",
   performedBy: userId,
   description: "Patient entered Room 5",
 });
 
 // When tests are ordered
-await logVisitEvent({
-  visitId: "visit_123",
+await logAppointmentEvent({
+  appointmentId: "appointment_123",
   eventType: "TESTS_ORDERED",
   performedBy: doctorId,
   description: "Ordered CBC and Lipid Profile",
@@ -105,8 +118,8 @@ await logVisitEvent({
 });
 
 // When payment received
-await logVisitEvent({
-  visitId: "visit_123",
+await logAppointmentEvent({
+  appointmentId: "appointment_123",
   eventType: "PAYMENT_RECEIVED",
   performedBy: receptionistId,
   metadata: {
@@ -191,22 +204,26 @@ await logMultipleEvents([
 ### Standard OPD Visit
 
 1. **Registration Phase**
+
    ```
    VISIT_REGISTERED → QUEUE_JOINED → CONSULTATION_BILLED → PAYMENT_RECEIVED
    ```
 
 2. **Consultation Phase**
+
    ```
    QUEUE_CALLED → ENTERED_ROOM → (consultation happens) → EXITED_ROOM
    ```
 
 3. **Clinical Actions**
+
    ```
    PRESCRIPTION_GIVEN
    TESTS_ORDERED → TESTS_BILLED → PAYMENT_RECEIVED
    ```
 
 4. **Lab Phase** (if tests ordered)
+
    ```
    TEST_SAMPLE_COLLECTED → TEST_IN_PROGRESS → TEST_COMPLETED →
    TEST_REVIEWED → TEST_APPROVED → REPORT_GENERATED → REPORT_DELIVERED
@@ -226,6 +243,7 @@ VISIT_REGISTERED → ... → REFERRAL_GIVEN → VISIT_COMPLETED → FOLLOWUP_SCH
 ## Metadata Examples
 
 ### When billing:
+
 ```json
 {
   "billId": "bill_123",
@@ -236,6 +254,7 @@ VISIT_REGISTERED → ... → REFERRAL_GIVEN → VISIT_COMPLETED → FOLLOWUP_SCH
 ```
 
 ### When ordering tests:
+
 ```json
 {
   "testOrderIds": ["test_456", "test_789"],
@@ -246,6 +265,7 @@ VISIT_REGISTERED → ... → REFERRAL_GIVEN → VISIT_COMPLETED → FOLLOWUP_SCH
 ```
 
 ### When delivering report:
+
 ```json
 {
   "testId": "test_456",
@@ -257,6 +277,7 @@ VISIT_REGISTERED → ... → REFERRAL_GIVEN → VISIT_COMPLETED → FOLLOWUP_SCH
 ```
 
 ### Consultation duration:
+
 ```json
 {
   "durationMinutes": 15,
@@ -268,6 +289,7 @@ VISIT_REGISTERED → ... → REFERRAL_GIVEN → VISIT_COMPLETED → FOLLOWUP_SCH
 ## Integration Points
 
 ### 1. Visit Creation (router/visits.ts)
+
 ```typescript
 // When creating visit
 await logVisitEvent({
@@ -278,6 +300,7 @@ await logVisitEvent({
 ```
 
 ### 2. Billing (router/billing.ts)
+
 ```typescript
 // After successful payment
 await logVisitEvent({
@@ -288,6 +311,7 @@ await logVisitEvent({
 ```
 
 ### 3. Queue Management (router/queue.ts)
+
 ```typescript
 // When calling patient
 await logVisitEvent({
@@ -298,6 +322,7 @@ await logVisitEvent({
 ```
 
 ### 4. Lab Tests (router/tests.ts)
+
 ```typescript
 // When technician starts test
 await logVisitEvent({
@@ -311,6 +336,7 @@ await logVisitEvent({
 ## Best Practices
 
 ### 1. Always Log Critical Events
+
 - Visit creation/completion
 - Payment transactions
 - Test results
@@ -318,19 +344,23 @@ await logVisitEvent({
 - Entry/exit times
 
 ### 2. Include Metadata
+
 - Link related entities (billId, testId, etc.)
 - Store calculated values (duration, amount)
 - Reference files (reportUrl, fileSize)
 
 ### 3. Use Transactions
+
 - When multiple events must succeed together
 - Example: Visit registration + queue joining + billing
 
 ### 4. Don't Modify Events
+
 - Events are **immutable** - never update/delete
 - If mistake, log compensating event (e.g., PAYMENT_REFUNDED)
 
 ### 5. Performance
+
 - Use indexed fields for queries
 - Filter by eventType for specific lookups
 - Use visitId + performedAt for timeline
@@ -338,6 +368,7 @@ await logVisitEvent({
 ## Analytics Queries
 
 ### Average consultation time:
+
 ```sql
 SELECT AVG(duration) FROM (
   SELECT
@@ -353,6 +384,7 @@ SELECT AVG(duration) FROM (
 ```
 
 ### Most common event types:
+
 ```sql
 SELECT eventType, COUNT(*) as count
 FROM visit_events
@@ -361,6 +393,7 @@ ORDER BY count DESC;
 ```
 
 ### Daily visit statistics:
+
 ```sql
 SELECT
   DATE(performedAt) as date,

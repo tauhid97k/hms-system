@@ -81,24 +81,17 @@ export function QueueTable({ initialData, doctors, currentFilters }: QueueTableP
       ),
     },
     {
-      accessorKey: "doctor.employeeDepartments",
+      accessorKey: "doctor.department",
       header: "Department",
       cell: ({ row }) => {
-        const departments = row.original.doctor.employeeDepartments || [];
-        if (departments.length === 0) {
+        const department = row.original.doctor.department;
+        if (!department) {
           return <span className="text-sm text-muted-foreground">-</span>;
         }
         return (
-          <div className="flex flex-wrap gap-1">
-            {departments.slice(0, 2).map((ed) => (
-              <Badge key={ed.id} variant="secondary">
-                {ed.department.name}
-              </Badge>
-            ))}
-            {departments.length > 2 && (
-              <Badge variant="secondary">+{departments.length - 2}</Badge>
-            )}
-          </div>
+          <Badge variant="secondary">
+            {department.name}
+          </Badge>
         );
       },
     },

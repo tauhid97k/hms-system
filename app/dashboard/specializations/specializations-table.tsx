@@ -36,7 +36,7 @@ import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebounceValue } from "usehooks-ts";
 import { LuEllipsisVertical, LuPencil, LuPower, LuTrash2 } from "react-icons/lu";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ type SpecializationsTableProps = {
 export function SpecializationsTable({ initialData }: SpecializationsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = new URLSearchParams(searchParams);
+  const params = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSpecialization, setEditingSpecialization] = useState<Specialization | null>(null);
   const [deletingSpecialization, setDeletingSpecialization] = useState<Specialization | null>(null);
@@ -84,7 +84,7 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
       params.set("page", "1");
       router.push(`?${params.toString()}`, { scroll: false });
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, searchParams, params, router]);
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -157,7 +157,7 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
     {
       accessorKey: "_count.employeeSpecializations",
       header: "Employees",
-      cell: ({ row }) => <div className="text-sm">{row.original._count?.employeeSpecializations || 0}</div>,
+      cell: ({ row }) => <div className="text-sm text-center">{row.original._count?.employeeSpecializations || 0}</div>,
     },
     {
       accessorKey: "isActive",

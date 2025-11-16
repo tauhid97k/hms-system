@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DoctorForm } from "../../_components/doctor-form";
+import { CreateDoctorForm } from "../../_components/create-doctor-form";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { toast } from "sonner";
@@ -23,9 +23,9 @@ export function NewDoctorForm({ departments, specializations }: NewDoctorFormPro
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CreateDoctorFormData) => {
     setIsLoading(true);
-    const { data: result, error } = await safeClient.doctors.create(data);
+    const { error } = await safeClient.doctors.create(data);
 
     if (error) {
       toast.error(error.message || "Failed to create doctor");
@@ -42,8 +42,7 @@ export function NewDoctorForm({ departments, specializations }: NewDoctorFormPro
   };
 
   return (
-    <DoctorForm
-      mode="create"
+    <CreateDoctorForm
       departments={departments}
       specializations={specializations}
       onSubmit={handleSubmit}
