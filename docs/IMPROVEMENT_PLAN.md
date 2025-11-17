@@ -267,8 +267,8 @@ const safeClient = createSafeClient(client);
 #### Phase 1: Setup (Week 1)
 
 ```bash
-npm install zod@^4.0.0
-npm install @orpc/zod
+pnpm add zod@^4.0.0
+pnpm add @orpc/zod
 ```
 
 #### Phase 2: Core Schemas (Week 1)
