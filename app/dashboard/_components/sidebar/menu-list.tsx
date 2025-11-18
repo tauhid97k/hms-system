@@ -1,14 +1,15 @@
 import {
-  LuLayoutGrid,
-  LuList,
-  LuSettings,
   LuBuilding2,
-  LuUsers,
-  LuStethoscope,
-  LuGraduationCap,
   LuClipboardList,
   LuClock,
+  LuFlaskConical,
+  LuGraduationCap,
+  LuLayoutGrid,
+  LuList,
   LuReceipt,
+  LuSettings,
+  LuStethoscope,
+  LuUsers,
 } from "react-icons/lu";
 
 export interface SubMenuItem {
@@ -77,12 +78,18 @@ export const menuList: MenuItem[] = [
   },
   {
     id: 9,
+    title: "Tests",
+    icon: <LuFlaskConical className="icon" />,
+    url: "/dashboard/tests",
+  },
+  {
+    id: 10,
     title: "Categories",
     icon: <LuList className="icon" />,
     url: "/dashboard/categories",
   },
   {
-    id: 10,
+    id: 11,
     title: "Settings",
     icon: <LuSettings className="icon" />,
     url: "/dashboard/settings",

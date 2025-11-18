@@ -607,7 +607,7 @@ model labs {
 model test_types {
   id          String   @id @default(ulid())
   name        String
-  labId       String
+  labId       String?
   code        String   @unique
   price       Float
   templateId  String?
@@ -616,7 +616,7 @@ model test_types {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  lab        labs            @relation(fields: [labId], references: [id])
+  lab        labs?           @relation(fields: [labId], references: [id])
   template   test_templates? @relation(fields: [templateId], references: [id])
   testOrders test_orders[]
 

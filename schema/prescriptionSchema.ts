@@ -14,7 +14,6 @@ export const createPrescriptionSchema = object({
   doctorId: string().required("Doctor is required"),
   notes: string().nullable().optional(),
   followUpDate: date().nullable().optional(),
-  items: array(prescriptionItemSchema)
-    .min(1, "At least one medicine is required")
-    .required("Medicines are required"),
+  items: array(prescriptionItemSchema).optional().default([]),
+  testTypeIds: array(string().required()).optional().default([]),
 });

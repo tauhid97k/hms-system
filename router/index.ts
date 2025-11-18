@@ -28,6 +28,7 @@ import {
   toggleDoctorAvailability,
   updateDoctor,
 } from "./doctors";
+import { getLabs } from "./labs";
 import { getMedicineInstructions } from "./medicineInstructions";
 import { getMedicine, getMedicines } from "./medicines";
 import {
@@ -50,6 +51,13 @@ import {
   toggleSpecializationStatus,
   updateSpecialization,
 } from "./specializations";
+import {
+  createTest,
+  deleteTest,
+  getTests,
+  toggleTestStatus,
+  updateTest,
+} from "./tests";
 
 export const router = {
   categories: {
@@ -116,5 +124,15 @@ export const router = {
     create: createPrescription,
     getByAppointment: getPrescriptionByAppointment,
     getByPatient: getPrescriptionsByPatient,
+  },
+  tests: {
+    getAll: getTests,
+    create: createTest,
+    update: updateTest,
+    delete: deleteTest,
+    toggleStatus: toggleTestStatus,
+  },
+  labs: {
+    getAll: getLabs,
   },
 };

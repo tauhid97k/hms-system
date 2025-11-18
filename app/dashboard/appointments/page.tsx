@@ -1,19 +1,27 @@
 import { client } from "@/lib/orpc";
-import { AppointmentsTable } from "./_components/appointments-table";
 import { format } from "date-fns";
+import { AppointmentsTable } from "./_components/appointments-table";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-export default async function AppointmentsPage(props: { searchParams: SearchParams }) {
+export default async function AppointmentsPage(props: {
+  searchParams: SearchParams;
+}) {
   const searchParams = await props.searchParams;
   const page = searchParams.page ? Number(searchParams.page) : 1;
   const limit = searchParams.limit ? Number(searchParams.limit) : 20;
   const status = searchParams.status
-    ? (String(searchParams.status) as "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED")
+    ? (String(searchParams.status) as
+        | "WAITING"
+        | "IN_CONSULTATION"
+        | "COMPLETED"
+        | "CANCELLED")
     : undefined;
-  const doctorId = searchParams.doctorId ? String(searchParams.doctorId) : undefined;
+  const doctorId = searchParams.doctorId
+    ? String(searchParams.doctorId)
+    : undefined;
 
   // Default to today's date if no date filter
   const appointmentDate = searchParams.appointmentDate
@@ -21,7 +29,7 @@ export default async function AppointmentsPage(props: { searchParams: SearchPara
     : format(new Date(), "yyyy-MM-dd");
 
   // Fetch all data in parallel
-  const [doctorsData, appointmentsData, medicinesData, instructionsData] = await Promise.all([
+  const [doctorsData, appointmentsData] = await Promise.all([
     client.doctors.getAll({
       page: 1,
       limit: 100,
@@ -34,18 +42,6 @@ export default async function AppointmentsPage(props: { searchParams: SearchPara
       doctorId,
       appointmentDate,
     }),
-    client.medicines.getAll({
-      page: 1,
-      limit: 100,
-      search: "",
-      isActive: "true",
-    }),
-    client.medicineInstructions.getAll({
-      page: 1,
-      limit: 100,
-      search: "",
-      isActive: "true",
-    }),
   ]);
 
   return (
@@ -53,8 +49,6 @@ export default async function AppointmentsPage(props: { searchParams: SearchPara
       initialData={appointmentsData}
       currentDate={appointmentDate}
       doctors={doctorsData.data}
-      medicines={medicinesData.data}
-      instructions={instructionsData.data}
     />
   );
 }

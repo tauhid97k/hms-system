@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -18,7 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Doctor, Medicine, MedicineInstruction, PaginatedData, AppointmentTableRow } from "@/lib/dataTypes";
+import type {
+  AppointmentTableRow,
+  Doctor,
+  PaginatedData,
+} from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -30,14 +33,11 @@ import {
   LuStethoscope,
   LuUser,
 } from "react-icons/lu";
-import { PrescriptionDialog } from "./prescription-dialog";
 
 type AppointmentsTableProps = {
   initialData: PaginatedData<AppointmentTableRow>;
   currentDate: string;
   doctors: Doctor[];
-  medicines: Medicine[];
-  instructions: MedicineInstruction[];
 };
 
 const statusConfig = {
@@ -51,13 +51,9 @@ export function AppointmentsTable({
   initialData,
   currentDate,
   doctors,
-  medicines,
-  instructions,
 }: AppointmentsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentTableRow | null>(null);
 
   const handleStatusChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -131,9 +127,7 @@ export function AppointmentsTable({
         if (!department) {
           return <span className="text-sm text-muted-foreground">-</span>;
         }
-        return (
-          <Badge variant="secondary">{department.name}</Badge>
-        );
+        return <Badge variant="secondary">{department.name}</Badge>;
       },
     },
     {
@@ -209,14 +203,13 @@ export function AppointmentsTable({
                 </Link>
               </DropdownMenuItem>
               {appointment.status === "IN_CONSULTATION" && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedAppointment(appointment);
-                    setPrescriptionDialogOpen(true);
-                  }}
-                >
-                  <LuPill />
-                  Prescribe
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/dashboard/appointments/${appointment.id}/prescription`}
+                  >
+                    <LuPill />
+                    Prescribe
+                  </Link>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem>
@@ -288,18 +281,6 @@ export function AppointmentsTable({
           onLimitChange={handleLimitChange}
         />
       </div>
-
-      {/* Prescription Dialog */}
-      {selectedAppointment && (
-        <PrescriptionDialog
-          open={prescriptionDialogOpen}
-          onOpenChange={setPrescriptionDialogOpen}
-          appointment={selectedAppointment}
-          doctorId={selectedAppointment.doctor.id}
-          medicines={medicines}
-          instructions={instructions}
-        />
-      )}
     </>
   );
 }

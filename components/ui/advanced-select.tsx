@@ -61,7 +61,12 @@ export function AdvancedSelect({
             className,
           )}
         >
-          <span className={cn(!selectedOption && "text-muted-foreground")}>
+          <span
+            className={cn(
+              "truncate",
+              !selectedOption && "text-muted-foreground",
+            )}
+          >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <LuChevronDown className="size-5 shrink-0 opacity-50" />
@@ -82,7 +87,7 @@ export function AdvancedSelect({
                   <CommandItem
                     key={option.value}
                     onSelect={() => handleSelect(option.value)}
-                    className="cursor-pointer flex justify-between items-center"
+                    className="flex cursor-pointer items-center justify-between"
                   >
                     <span>{option.label}</span>
                     {isSelected && <LuCheck className="size-4" />}

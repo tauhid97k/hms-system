@@ -1,16 +1,30 @@
 "use client";
 
+import {
+  AdvancedSelect,
+  AdvancedSelectOption,
+} from "@/components/ui/advanced-select";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AdvancedSelect, AdvancedSelectOption } from "@/components/ui/advanced-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import type { Medicine, MedicineInstruction, TestType } from "@/lib/dataTypes";
 import { formatDate } from "@/lib/date-format";
-import type { Medicine, MedicineInstruction } from "@/lib/dataTypes";
+import { cn } from "@/lib/utils";
 import { createPrescriptionSchema } from "@/schema/prescriptionSchema";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
@@ -24,6 +38,7 @@ type PrescriptionFormProps = {
   doctorId: string;
   medicines: Medicine[];
   instructions: MedicineInstruction[];
+  testTypes?: TestType[];
   onSubmit: (data: CreatePrescriptionData) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -34,6 +49,7 @@ export function PrescriptionForm({
   doctorId,
   medicines,
   instructions,
+  testTypes = [],
   onSubmit,
   onCancel,
   isLoading,
@@ -45,14 +61,8 @@ export function PrescriptionForm({
       doctorId,
       notes: null,
       followUpDate: null,
-      items: [
-        {
-          medicineId: "",
-          instructionId: null,
-          duration: null,
-          notes: null,
-        },
-      ],
+      items: [],
+      testTypeIds: [],
     },
   });
 
@@ -77,148 +87,239 @@ export function PrescriptionForm({
     label: instruction.name,
   }));
 
+  // Convert test types to options
+  const testTypeOptions = testTypes.map((test) => ({
+    value: test.id,
+    label: test.name,
+  }));
+
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
       {/* Medicines Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium">Medicines</h3>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              append({
-                medicineId: "",
-                instructionId: null,
-                duration: null,
-                notes: null,
-              })
-            }
-            disabled={isLoading}
-            className="gap-2"
-          >
-            <LuPlus className="size-4" />
-            Add Medicine
-          </Button>
+          {fields.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                append({
+                  medicineId: "",
+                  instructionId: null,
+                  duration: null,
+                  notes: null,
+                })
+              }
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <LuPlus className="size-4" />
+              Add Medicine
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-4">
-          {fields.map((field, index) => (
-            <div
-              key={field.id}
-              className="rounded-lg border bg-muted/30 p-4 space-y-4"
+        {fields.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-center">
+            <p className="mb-3 text-sm text-muted-foreground">
+              No medicines added yet
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                append({
+                  medicineId: "",
+                  instructionId: null,
+                  duration: null,
+                  notes: null,
+                })
+              }
+              disabled={isLoading}
+              className="gap-2"
             >
-              <div className="flex items-start justify-between gap-4">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Medicine {index + 1}
-                </h4>
-                {fields.length > 1 && (
+              <LuPlus className="size-4" />
+              Add Medicine
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="space-y-4 rounded-lg border bg-muted/30 p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">
+                    Medicine {index + 1}
+                  </h4>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="destructive"
                     size="sm"
                     onClick={() => remove(index)}
                     disabled={isLoading}
-                    className="size-8 p-0 text-destructive hover:text-destructive"
+                    className="size-8 p-0"
                   >
                     <LuTrash2 className="size-4" />
                   </Button>
-                )}
-              </div>
+                </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Medicine Selection */}
-                <Controller
-                  name={`items.${index}.medicineId`}
-                  control={form.control}
-                  render={({ field: controllerField, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid} className="sm:col-span-2">
-                      <FieldLabel>
-                        Medicine <span className="text-destructive">*</span>
-                      </FieldLabel>
-                      <AdvancedSelect
-                        value={controllerField.value || ""}
-                        onChange={controllerField.onChange}
-                        options={medicineOptions}
-                        placeholder="Search and select medicine"
-                        disabled={isLoading}
-                        emptyMessage="No medicines found"
-                      />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-
-                {/* Instruction */}
-                <Controller
-                  name={`items.${index}.instructionId`}
-                  control={form.control}
-                  render={({ field: controllerField, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Dosage Instructions</FieldLabel>
-                      <Select
-                        value={controllerField.value || ""}
-                        onValueChange={controllerField.onChange}
-                        disabled={isLoading}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Medicine Selection */}
+                  <Controller
+                    name={`items.${index}.medicineId`}
+                    control={form.control}
+                    render={({ field: controllerField, fieldState }) => (
+                      <Field
+                        data-invalid={fieldState.invalid}
+                        className="sm:col-span-2"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select instruction" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {instructionOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
+                        <FieldLabel>
+                          Medicine <span className="text-destructive">*</span>
+                        </FieldLabel>
+                        <AdvancedSelect
+                          value={controllerField.value || ""}
+                          onChange={controllerField.onChange}
+                          options={medicineOptions}
+                          placeholder="Search and select medicine"
+                          disabled={isLoading}
+                          emptyMessage="No medicines found"
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
 
-                {/* Duration */}
-                <Controller
-                  name={`items.${index}.duration`}
-                  control={form.control}
-                  render={({ field: controllerField, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Duration</FieldLabel>
-                      <Input
-                        {...controllerField}
-                        value={controllerField.value || ""}
-                        placeholder="e.g., 7 days, 2 weeks"
-                        disabled={isLoading}
-                      />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
+                  {/* Instruction */}
+                  <Controller
+                    name={`items.${index}.instructionId`}
+                    control={form.control}
+                    render={({ field: controllerField, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Dosage Instructions</FieldLabel>
+                        <Select
+                          value={controllerField.value || ""}
+                          onValueChange={controllerField.onChange}
+                          disabled={isLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select instruction" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {instructionOptions.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
 
-                {/* Item Notes */}
-                <Controller
-                  name={`items.${index}.notes`}
-                  control={form.control}
-                  render={({ field: controllerField, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid} className="sm:col-span-2">
-                      <FieldLabel>Additional Notes</FieldLabel>
-                      <Textarea
-                        {...controllerField}
-                        value={controllerField.value || ""}
-                        placeholder="Any special instructions for this medicine..."
-                        rows={2}
-                        disabled={isLoading}
-                      />
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
+                  {/* Duration */}
+                  <Controller
+                    name={`items.${index}.duration`}
+                    control={form.control}
+                    render={({ field: controllerField, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel>Duration</FieldLabel>
+                        <Input
+                          {...controllerField}
+                          value={controllerField.value || ""}
+                          placeholder="e.g., 7 days, 2 weeks"
+                          disabled={isLoading}
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+
+                  {/* Item Notes */}
+                  <Controller
+                    name={`items.${index}.notes`}
+                    control={form.control}
+                    render={({ field: controllerField, fieldState }) => (
+                      <Field
+                        data-invalid={fieldState.invalid}
+                        className="sm:col-span-2"
+                      >
+                        <FieldLabel>Additional Notes</FieldLabel>
+                        <Textarea
+                          {...controllerField}
+                          value={controllerField.value || ""}
+                          placeholder="Any special instructions for this medicine..."
+                          rows={2}
+                          disabled={isLoading}
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                {/* Add Another Button */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      append({
+                        medicineId: "",
+                        instructionId: null,
+                        duration: null,
+                        notes: null,
+                      })
+                    }
+                    disabled={isLoading}
+                    className="gap-2"
+                  >
+                    <LuPlus className="size-4" />
+                    Add Another
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Tests Section */}
+      {testTypes.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Lab Tests</h3>
+          <Controller
+            name="testTypeIds"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel>Select Tests (Optional)</FieldLabel>
+                <MultiSelect
+                  value={testTypeOptions.filter((opt) =>
+                    (field.value || []).includes(opt.value),
+                  )}
+                  onChange={(selected) =>
+                    field.onChange(selected.map((s) => s.value))
+                  }
+                  options={testTypeOptions}
+                  placeholder="Select tests..."
+                  isDisabled={isLoading}
+                />
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+        </div>
+      )}
 
       {/* General Notes */}
       <Controller
@@ -251,13 +352,15 @@ export function PrescriptionForm({
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "h-10 w-full justify-start gap-2 rounded-md border-2 border-input bg-background px-3 py-2 text-sm font-light transition-[color,box-shadow] hover:bg-background focus-visible:border-primary focus-visible:outline-hidden",
                     !field.value && "text-muted-foreground",
                   )}
                   disabled={isLoading}
                 >
-                  <LuCalendar className="mr-2 size-4" />
-                  {field.value ? formatDate(field.value) : "Select follow-up date"}
+                  <LuCalendar className="size-4 text-muted-foreground" />
+                  {field.value
+                    ? formatDate(field.value)
+                    : "Select follow-up date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -276,7 +379,7 @@ export function PrescriptionForm({
       />
 
       {/* Form Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 border-t pt-4">
         <Button
           type="button"
           variant="outline"

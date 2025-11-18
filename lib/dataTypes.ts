@@ -308,3 +308,12 @@ export type QueueAppointment = {
     };
   };
 };
+
+export type TestType = {
+  id: string;
+  name: string;
+  description: string | null;
+  labId: string | null;
+  price: number;
+  isActive: boolean;
+};
