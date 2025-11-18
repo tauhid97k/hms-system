@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { client } from "@/lib/orpc";
 import prisma from "@/lib/prisma";
-import { NewAppointmentForm } from "./_components/new-appointment-form";
+import { NewAppointmentForm } from "../_components/new-appointment-form";
 
 export default async function NewAppointmentPage() {
   // Get current session
@@ -97,13 +97,11 @@ export default async function NewAppointmentPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-6">
-        <NewAppointmentForm
-          patients={patients}
-          doctors={doctors}
-          currentEmployeeId={employeeId}
-        />
-      </div>
+      <NewAppointmentForm
+        patients={patients}
+        doctors={doctors}
+        currentEmployeeId={employeeId}
+      />
     </div>
   );
 }

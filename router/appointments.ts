@@ -10,6 +10,7 @@ import {
 import {
   callNextPatientSchema,
   createAppointmentSchema,
+  createAppointmentWithNewPatientSchema,
   updateAppointmentSchema,
   updateAppointmentStatusSchema,
 } from "@/schema/appointmentSchema";
@@ -419,6 +420,177 @@ export const createAppointment = os
     await emitQueueUpdate(input.doctorId);
 
     return result.appointment;
+  });
+
+// Create appointment with new patient (simplified registration)
+export const createAppointmentWithNewPatient = os
+  .route({
+    method: "POST",
+    path: "/appointments/with-new-patient",
+    summary: "Create appointment with new patient registration",
+  })
+  .input(createAppointmentWithNewPatientSchema)
+  .handler(async ({ input }) => {
+    // Get doctor fees
+    const doctor = await prisma.employees.findUnique({
+      where: { id: input.doctorId },
+      select: {
+        consultationFee: true,
+        hospitalFee: true,
+        user: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!doctor) {
+      throw new Error("Doctor not found");
+    }
+
+    // Get next serial number and queue position
+    const serialNumber = await getNextSerialNumber(input.doctorId);
+    const queuePosition = await getNextQueuePosition(input.doctorId);
+    const appointmentMonth = format(new Date(), "yyyy-MM");
+
+    // Check if patient with same phone already exists
+    const existingPatient = await prisma.patients.findFirst({
+      where: { phone: input.patientPhone },
+    });
+
+    if (existingPatient) {
+      throw new Error("Patient with this phone number already exists");
+    }
+
+    // Generate patient ID with proper format and locking
+    const currentYear = new Date().getFullYear();
+    const yearSuffix = currentYear.toString().slice(-2);
+    const prefix = `PID${yearSuffix}-`;
+
+    // Transaction: Create patient + appointment + bill + events
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Generate patient ID with database-level locking
+      const lastPatient = await tx.$queryRaw<Array<{ patientId: string }>>`
+        SELECT "patientId"
+        FROM patients
+        WHERE "patientId" LIKE ${prefix + "%"}
+        ORDER BY "patientId" DESC
+        FOR UPDATE
+        LIMIT 1
+      `;
+
+      let nextSequential = 1;
+      if (lastPatient.length > 0) {
+        const lastSequential = parseInt(lastPatient[0].patientId.split("-")[1]);
+        nextSequential = lastSequential + 1;
+      }
+
+      const patientId = `${prefix}${nextSequential.toString().padStart(6, "0")}`;
+
+      // 2. Create patient with simplified fields
+      const patient = await tx.patients.create({
+        data: {
+          patientId,
+          name: input.patientName,
+          phone: input.patientPhone,
+          age: input.patientAge,
+          gender: input.patientGender as "MALE" | "FEMALE" | "OTHER",
+          isActive: true,
+        },
+      });
+
+      // 3. Create appointment
+      const appointment = await tx.appointments.create({
+        data: {
+          patientId: patient.id,
+          doctorId: input.doctorId,
+          assignedBy: input.assignedBy,
+          appointmentType: input.appointmentType as AppointmentType,
+          chiefComplaint: input.chiefComplaint,
+          serialNumber,
+          queuePosition,
+          status: AppointmentStatus.WAITING,
+          appointmentDate: new Date(),
+          appointmentMonth,
+        },
+      });
+
+      // 4. Auto-generate bill
+      const consultationFee = doctor.consultationFee || 0;
+      const hospitalFee = doctor.hospitalFee || 0;
+      const totalFee = consultationFee + hospitalFee;
+
+      const billNumber = await generateBillNumber();
+
+      const bill = await tx.bills.create({
+        data: {
+          billNumber,
+          patientId: patient.id,
+          appointmentId: appointment.id,
+          billableType: "appointment",
+          billableId: appointment.id,
+          totalAmount: totalFee,
+          dueAmount: totalFee,
+          paidAmount: 0,
+          status: "PENDING",
+          billingDate: new Date(),
+        },
+      });
+
+      // 5. Create bill item
+      await tx.bill_items.create({
+        data: {
+          billId: bill.id,
+          itemableType: "consultation",
+          itemableId: appointment.id,
+          itemName: `Consultation - ${doctor.user.name}`,
+          quantity: 1,
+          unitPrice: totalFee,
+          total: totalFee,
+        },
+      });
+
+      // 6. Log events
+      await tx.appointment_events.createMany({
+        data: [
+          {
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.APPOINTMENT_REGISTERED,
+            performedBy: input.assignedBy,
+            description: "Appointment registered with new patient",
+          },
+          {
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.QUEUE_JOINED,
+            performedBy: input.assignedBy,
+            description: `Joined queue at position ${queuePosition}`,
+          },
+          {
+            appointmentId: appointment.id,
+            eventType: AppointmentEventType.CONSULTATION_BILLED,
+            performedBy: input.assignedBy,
+            description: `Billed ${totalFee}`,
+            metadata: {
+              billId: bill.id,
+              amount: totalFee,
+              billNumber,
+            },
+          },
+        ],
+      });
+
+      return { patient, appointment, bill };
+    });
+
+    // Emit queue update (non-blocking)
+    await emitQueueUpdate(input.doctorId);
+
+    return {
+      appointment: result.appointment,
+      patient: result.patient,
+      patientId: result.patient.patientId,
+    };
   });
 
 // Update appointment status

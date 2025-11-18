@@ -1,8 +1,29 @@
-import { object, string } from "yup";
+import { number, object, string } from "yup";
 
 // Create Appointment Schema
 export const createAppointmentSchema = object({
   patientId: string().required("Patient is required"),
+  doctorId: string().required("Doctor is required"),
+  assignedBy: string().required("Assigned by is required"),
+  appointmentType: string()
+    .oneOf(["NEW", "FOLLOWUP"], "Invalid appointment type")
+    .required("Appointment type is required"),
+  chiefComplaint: string().nullable().default(null),
+});
+
+// Create Appointment with New Patient Schema
+export const createAppointmentWithNewPatientSchema = object({
+  // Patient fields (simplified for quick appointment)
+  patientName: string().required("Patient name is required"),
+  patientPhone: string().required("Phone number is required"),
+  patientAge: number()
+    .required("Age is required")
+    .positive("Age must be positive")
+    .integer("Age must be a whole number"),
+  patientGender: string()
+    .oneOf(["MALE", "FEMALE", "OTHER"], "Invalid gender")
+    .required("Gender is required"),
+  // Appointment fields
   doctorId: string().required("Doctor is required"),
   assignedBy: string().required("Assigned by is required"),
   appointmentType: string()

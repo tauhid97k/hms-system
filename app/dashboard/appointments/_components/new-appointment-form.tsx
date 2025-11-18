@@ -2,17 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppointmentForm } from "../../_components/appointment-form";
+import { AppointmentFormTabs } from "./appointment-form-tabs";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { toast } from "sonner";
 import type { InferType } from "yup";
-import { createAppointmentSchema } from "@/schema/appointmentSchema";
+import {
+  createAppointmentSchema,
+  createAppointmentWithNewPatientSchema,
+} from "@/schema/appointmentSchema";
 import type { Patient, Doctor } from "@/lib/dataTypes";
 
 const safeClient = createSafeClient(client);
 
 type CreateAppointmentFormData = InferType<typeof createAppointmentSchema>;
+type CreateAppointmentWithNewPatientFormData = InferType<
+  typeof createAppointmentWithNewPatientSchema
+>;
 
 type NewAppointmentFormProps = {
   patients: Patient[];
@@ -28,7 +34,10 @@ export function NewAppointmentForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: CreateAppointmentFormData, shouldPrint = false) => {
+  const handleSubmitExisting = async (
+    data: CreateAppointmentFormData,
+    shouldPrint = false,
+  ) => {
     setIsLoading(true);
     const { data: result, error } = await safeClient.appointments.create(data);
 
@@ -36,7 +45,7 @@ export function NewAppointmentForm({
       toast.error(error.message || "Failed to register appointment");
     } else {
       toast.success(
-        `Appointment registered successfully. Serial: ${result.serialNumber}, Queue Position: ${result.queuePosition}`
+        `Appointment registered successfully. Serial: ${result.serialNumber}, Queue Position: ${result.queuePosition}`,
       );
 
       if (shouldPrint) {
@@ -50,16 +59,37 @@ export function NewAppointmentForm({
     setIsLoading(false);
   };
 
+  const handleSubmitNew = async (
+    data: CreateAppointmentWithNewPatientFormData,
+  ) => {
+    setIsLoading(true);
+    const { data: result, error } =
+      await safeClient.appointments.createWithNewPatient(data);
+
+    if (error) {
+      toast.error(error.message || "Failed to register appointment");
+    } else {
+      toast.success(
+        `Patient registered with ID: ${result.patientId}. Appointment Serial: ${result.appointment.serialNumber}, Queue Position: ${result.appointment.queuePosition}`,
+      );
+
+      router.push("/dashboard/appointments");
+      router.refresh();
+    }
+    setIsLoading(false);
+  };
+
   const handleCancel = () => {
     router.back();
   };
 
   return (
-    <AppointmentForm
+    <AppointmentFormTabs
       patients={patients}
       doctors={doctors}
       currentEmployeeId={currentEmployeeId}
-      onSubmit={handleSubmit}
+      onSubmitExisting={handleSubmitExisting}
+      onSubmitNew={handleSubmitNew}
       onCancel={handleCancel}
       isLoading={isLoading}
     />

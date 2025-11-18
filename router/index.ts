@@ -1,6 +1,7 @@
 import {
   callNextPatient,
   createAppointment,
+  createAppointmentWithNewPatient,
   getAppointment,
   getAppointmentBills,
   getAppointmentEvents,
@@ -103,6 +104,7 @@ export const router = {
     getEvents: getAppointmentEvents,
     getPrescriptions: getAppointmentPrescriptions,
     create: createAppointment,
+    createWithNewPatient: createAppointmentWithNewPatient,
     update: updateAppointment,
     updateStatus: updateAppointmentStatus,
     callNextPatient: callNextPatient,

@@ -1,7 +1,7 @@
 import { client } from "@/lib/orpc";
 import { notFound, redirect } from "next/navigation";
 import type { Route } from "next";
-import { NewPrescriptionForm } from "./_components/new-prescription-form";
+import { NewPrescriptionForm } from "../../_components/new-prescription-form";
 
 type PageProps = {
   params: Promise<{ id: string }>;
