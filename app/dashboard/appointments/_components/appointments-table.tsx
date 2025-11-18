@@ -115,7 +115,7 @@ export function AppointmentsTable({
       header: "Doctor",
       cell: ({ row }) => (
         <div className="font-medium">
-          Dr. {row.original.doctor.user?.name || "Unknown"}
+          {row.original.doctor.user?.name || "Unknown"}
         </div>
       ),
     },

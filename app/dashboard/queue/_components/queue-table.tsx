@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/select";
 import type { Doctor } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LuEye } from "react-icons/lu";
 
 type QueueData = {
@@ -41,7 +41,11 @@ type QueueTableProps = {
   currentFilters: QueueFilters;
 };
 
-export function QueueTable({ initialData, doctors, currentFilters }: QueueTableProps) {
+export function QueueTable({
+  initialData,
+  doctors,
+  currentFilters,
+}: QueueTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -72,7 +76,7 @@ export function QueueTable({ initialData, doctors, currentFilters }: QueueTableP
       cell: ({ row }) => (
         <div>
           <div className="font-medium">
-            Dr. {row.original.doctor.user?.name || "Unknown"}
+            {row.original.doctor.user?.name || "Unknown"}
           </div>
           <div className="text-sm text-muted-foreground">
             {row.original.doctor.user?.email}
@@ -88,11 +92,7 @@ export function QueueTable({ initialData, doctors, currentFilters }: QueueTableP
         if (!department) {
           return <span className="text-sm text-muted-foreground">-</span>;
         }
-        return (
-          <Badge variant="secondary">
-            {department.name}
-          </Badge>
-        );
+        return <Badge variant="secondary">{department.name}</Badge>;
       },
     },
     {
