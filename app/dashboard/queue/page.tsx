@@ -75,7 +75,6 @@ export default async function QueuePage(props: { searchParams: SearchParams }) {
     <QueueTable
       initialData={queuesData}
       doctors={doctorsData.data}
-      currentFilters={{ doctorId, status }}
     />
   );
 }

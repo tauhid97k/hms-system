@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useQueueStream } from "@/lib/hooks/use-queue-stream";
-import { LuRefreshCw, LuWifi, LuWifiOff } from "react-icons/lu";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Doctor } from "@/lib/dataTypes";
+import { useQueueStream } from "@/lib/hooks/use-queue-stream";
+import { useState } from "react";
+import { LuRefreshCw, LuWifi, LuWifiOff } from "react-icons/lu";
 
 type Appointment = {
   id: string;
@@ -49,7 +49,12 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
   const [queue, setQueue] = useState<Appointment[]>(initialQueue);
 
   // Subscribe to real-time updates via SSE
-  const { queue: liveQueue, isConnected, error, reconnect } = useQueueStream({
+  const {
+    queue: liveQueue,
+    isConnected,
+    error,
+    reconnect,
+  } = useQueueStream({
     doctorId: doctor.id,
     enabled: true,
     onUpdate: (updatedQueue) => {
@@ -63,9 +68,11 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
   // Use live queue if available, otherwise fall back to local state
   const displayQueue = liveQueue.length > 0 ? liveQueue : queue;
 
-  const waitingCount = displayQueue.filter((a) => a.status === "WAITING").length;
+  const waitingCount = displayQueue.filter(
+    (a) => a.status === "WAITING",
+  ).length;
   const inConsultationCount = displayQueue.filter(
-    (a) => a.status === "IN_CONSULTATION"
+    (a) => a.status === "IN_CONSULTATION",
   ).length;
 
   return (
@@ -73,7 +80,7 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>
-            Dr. {doctor.user?.name || "Unknown"}
+            {doctor.user?.name || "Unknown"}
             {doctor.department && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
                 ({doctor.department.name})
@@ -82,12 +89,18 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
           </CardTitle>
           <div className="flex items-center gap-2">
             {isConnected ? (
-              <Badge variant="outline" className="gap-1.5 border-green-500 text-green-500">
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-green-500 text-green-500"
+              >
                 <LuWifi className="h-3 w-3" />
                 Live
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1.5 border-red-500 text-red-500">
+              <Badge
+                variant="outline"
+                className="gap-1.5 border-red-500 text-red-500"
+              >
                 <LuWifiOff className="h-3 w-3" />
                 Offline
               </Badge>
@@ -126,20 +139,28 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
             {displayQueue.map((appointment) => (
               <div
                 key={appointment.id}
-                className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+                className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent/50"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 px-3 py-2 min-w-[60px]">
-                    <span className="text-xs text-muted-foreground">Serial</span>
-                    <span className="text-lg font-bold">{appointment.serialNumber}</span>
+                  <div className="flex min-w-[60px] flex-col items-center justify-center rounded-lg bg-primary/10 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">
+                      Serial
+                    </span>
+                    <span className="text-lg font-bold">
+                      {appointment.serialNumber}
+                    </span>
                   </div>
-                  <div className="flex flex-col items-center justify-center rounded-lg bg-muted px-3 py-2 min-w-[60px]">
+                  <div className="flex min-w-[60px] flex-col items-center justify-center rounded-lg bg-muted px-3 py-2">
                     <span className="text-xs text-muted-foreground">Queue</span>
-                    <span className="text-lg font-medium">{appointment.queuePosition}</span>
+                    <span className="text-lg font-medium">
+                      {appointment.queuePosition}
+                    </span>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{appointment.patient.name}</span>
+                      <span className="font-medium">
+                        {appointment.patient.name}
+                      </span>
                       <span className="text-sm text-muted-foreground">
                         ({appointment.patient.patientId})
                       </span>
@@ -152,7 +173,7 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
                       <span>{appointment.patient.phone}</span>
                     </div>
                     {appointment.chiefComplaint && (
-                      <p className="text-sm text-muted-foreground line-clamp-1">
+                      <p className="line-clamp-1 text-sm text-muted-foreground">
                         {appointment.chiefComplaint}
                       </p>
                     )}
@@ -160,7 +181,11 @@ export function QueueDisplay({ doctor, initialQueue }: QueueDisplayProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
-                    variant={appointment.appointmentType === "NEW" ? "default" : "secondary"}
+                    variant={
+                      appointment.appointmentType === "NEW"
+                        ? "default"
+                        : "secondary"
+                    }
                   >
                     {appointment.appointmentType}
                   </Badge>

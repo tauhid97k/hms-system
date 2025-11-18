@@ -400,8 +400,8 @@ export function DoctorsTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete Dr. {deletingDoctor?.user?.name}.
-              This action cannot be undone.
+              This will permanently delete {deletingDoctor?.user?.name}. This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

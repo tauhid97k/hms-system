@@ -1,14 +1,14 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTable } from "@/components/ui/data-table";
 import type { Doctor } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
-import { LuArrowLeft, LuPencil } from "react-icons/lu";
-import Link from "next/link";
 import { format } from "date-fns";
+import Link from "next/link";
+import { LuArrowLeft, LuPencil } from "react-icons/lu";
 
 type Appointment = {
   id: string;
@@ -37,7 +37,10 @@ const statusConfig = {
   CANCELLED: { label: "Cancelled", variant: "destructive" as const },
 };
 
-export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps) {
+export function DoctorProfile({
+  doctor,
+  recentAppointments,
+}: DoctorProfileProps) {
   const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "serialNumber",
@@ -64,7 +67,9 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
       header: "Type",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.appointmentType === "NEW" ? "default" : "secondary"}
+          variant={
+            row.original.appointmentType === "NEW" ? "default" : "secondary"
+          }
         >
           {row.original.appointmentType}
         </Badge>
@@ -116,9 +121,11 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-semibold md:text-3xl">
-                      Dr. {doctor.user?.name || "Unknown"}
+                      {doctor.user?.name || "Unknown"}
                     </h1>
-                    <Badge variant={doctor.isAvailable ? "default" : "secondary"}>
+                    <Badge
+                      variant={doctor.isAvailable ? "default" : "secondary"}
+                    >
                       {doctor.isAvailable ? "Available" : "Unavailable"}
                     </Badge>
                   </div>
@@ -206,7 +213,9 @@ export function DoctorProfile({ doctor, recentAppointments }: DoctorProfileProps
 
       {/* Recent Appointments Table */}
       <div className="rounded-xl border bg-card p-6">
-        <h2 className="mb-6 text-lg font-medium">Recent Patient Appointments</h2>
+        <h2 className="mb-6 text-lg font-medium">
+          Recent Patient Appointments
+        </h2>
         <DataTable columns={columns} data={recentAppointments} />
       </div>
     </>

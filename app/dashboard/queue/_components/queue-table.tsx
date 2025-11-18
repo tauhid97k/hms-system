@@ -14,6 +14,7 @@ import type { Doctor } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { LuEye } from "react-icons/lu";
 
 type QueueData = {
@@ -30,26 +31,23 @@ type Appointment = {
   status: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
 };
 
-type QueueFilters = {
-  doctorId?: string;
-  status?: "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED";
-};
-
 type QueueTableProps = {
   initialData: QueueData[];
   doctors: Doctor[];
-  currentFilters: QueueFilters;
 };
 
-export function QueueTable({
-  initialData,
-  doctors,
-  currentFilters,
-}: QueueTableProps) {
+export function QueueTable({ initialData, doctors }: QueueTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [doctorFilter, setDoctorFilter] = useState(
+    searchParams.get("doctorId") || "all",
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("status") || "all",
+  );
 
   const handleDoctorChange = (value: string) => {
+    setDoctorFilter(value);
     const params = new URLSearchParams(searchParams);
     if (value === "all") {
       params.delete("doctorId");
@@ -60,6 +58,7 @@ export function QueueTable({
   };
 
   const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
     const params = new URLSearchParams(searchParams);
     if (value === "all") {
       params.delete("status");
@@ -99,13 +98,11 @@ export function QueueTable({
       accessorKey: "consultingCount",
       header: () => <div className="text-center">Currently Consulting</div>,
       cell: ({ row }) => (
-        <div className="flex justify-center">
+        <div className="text-center">
           {row.original.consultingCount > 0 ? (
-            <Badge className="bg-blue-500 text-white" variant="default">
-              {row.original.consultingCount}
-            </Badge>
+            <Badge variant="default">{row.original.consultingCount}</Badge>
           ) : (
-            <span className="text-sm text-muted-foreground">None</span>
+            <Badge variant="secondary">0</Badge>
           )}
         </div>
       ),
@@ -114,13 +111,11 @@ export function QueueTable({
       accessorKey: "waitingCount",
       header: () => <div className="text-center">Waiting</div>,
       cell: ({ row }) => (
-        <div className="flex justify-center">
+        <div className="text-center">
           {row.original.waitingCount > 0 ? (
-            <Badge className="bg-yellow-500 text-white" variant="default">
-              {row.original.waitingCount}
-            </Badge>
+            <Badge variant="warning">{row.original.waitingCount}</Badge>
           ) : (
-            <span className="text-sm text-muted-foreground">0</span>
+            <Badge variant="secondary">0</Badge>
           )}
         </div>
       ),
@@ -129,8 +124,8 @@ export function QueueTable({
       accessorKey: "totalInQueue",
       header: () => <div className="text-center">Total in Queue</div>,
       cell: ({ row }) => (
-        <div className="text-center font-medium">
-          {row.original.totalInQueue}
+        <div className="text-center">
+          <Badge variant="secondary">{row.original.totalInQueue}</Badge>
         </div>
       ),
     },
@@ -161,10 +156,7 @@ export function QueueTable({
 
       <div className="rounded-xl border bg-card p-6">
         <div className="mb-6 flex items-center gap-4">
-          <Select
-            value={currentFilters.doctorId || "all"}
-            onValueChange={handleDoctorChange}
-          >
+          <Select value={doctorFilter} onValueChange={handleDoctorChange}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by doctor" />
             </SelectTrigger>
@@ -172,16 +164,13 @@ export function QueueTable({
               <SelectItem value="all">All Doctors</SelectItem>
               {doctors.map((doctor) => (
                 <SelectItem key={doctor.id} value={doctor.id}>
-                  Dr. {doctor.user?.name || "Unknown"}
+                  {doctor.user?.name || "Unknown"}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select
-            value={currentFilters.status || "all"}
-            onValueChange={handleStatusChange}
-          >
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>

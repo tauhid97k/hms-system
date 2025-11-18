@@ -296,7 +296,7 @@ export function DoctorQueueDetail({
             <div className="flex-1 space-y-4">
               <div>
                 <h1 className="text-xl font-semibold md:text-2xl">
-                  Dr. {doctor.user?.name || "Unknown"}
+                  {doctor.user?.name || "Unknown"}
                 </h1>
                 <p className="text-sm text-muted-foreground md:text-base">
                   {doctor.user?.email}

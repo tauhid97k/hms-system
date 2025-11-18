@@ -158,8 +158,8 @@ export function AppointmentsTable({
         const status = row.original.status;
         if (status === "WAITING" || status === "IN_CONSULTATION") {
           return (
-            <div className="text-center font-mono">
-              {row.original.queuePosition}
+            <div className="text-center">
+              <Badge variant="secondary">{row.original.queuePosition}</Badge>
             </div>
           );
         }
@@ -269,7 +269,7 @@ export function AppointmentsTable({
               <SelectItem value="all">All Doctors</SelectItem>
               {doctors.map((doctor) => (
                 <SelectItem key={doctor.id} value={doctor.id}>
-                  Dr. {doctor.user?.name || "Unknown"}
+                  {doctor.user?.name || "Unknown"}
                 </SelectItem>
               ))}
             </SelectContent>

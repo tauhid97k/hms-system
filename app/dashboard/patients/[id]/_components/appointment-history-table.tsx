@@ -3,8 +3,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
 import { formatDateTime } from "@/lib/date-format";
+import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
 // Simplified Appointment type for the table
@@ -30,31 +30,32 @@ type AppointmentHistoryTableProps = {
   patientId: string;
 };
 
-export function AppointmentHistoryTable({ appointments, patientId }: AppointmentHistoryTableProps) {
+export function AppointmentHistoryTable({
+  appointments,
+  patientId,
+}: AppointmentHistoryTableProps) {
   const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "appointmentDate",
       header: "Date",
       cell: ({ row }) => (
-        <div className="text-sm">{formatDateTime(row.original.appointmentDate)}</div>
+        <div className="text-sm">
+          {formatDateTime(row.original.appointmentDate)}
+        </div>
       ),
     },
     {
       accessorKey: "department",
       header: "Department",
       cell: ({ row }) => (
-        <div className="text-sm">
-          {row.original.department?.name}
-        </div>
+        <div className="text-sm">{row.original.department?.name}</div>
       ),
     },
     {
       accessorKey: "doctor",
       header: "Doctor",
       cell: ({ row }) => (
-        <div className="text-sm">
-          Dr. {row.original.doctor?.user?.name}
-        </div>
+        <div className="text-sm">{row.original.doctor?.user?.name}</div>
       ),
     },
     {
@@ -81,7 +82,19 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "success" | "warning" | "outline" }> = {
+        const statusMap: Record<
+          string,
+          {
+            label: string;
+            variant:
+              | "default"
+              | "secondary"
+              | "destructive"
+              | "success"
+              | "warning"
+              | "outline";
+          }
+        > = {
           PENDING: { label: "Pending", variant: "warning" },
           IN_PROGRESS: { label: "In Progress", variant: "default" },
           COMPLETED: { label: "Completed", variant: "success" },
@@ -104,7 +117,9 @@ export function AppointmentHistoryTable({ appointments, patientId }: Appointment
 
         return (
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/dashboard/patients/${patientId}/appointments/${appointment.id}`}>
+            <Link
+              href={`/dashboard/patients/${patientId}/appointments/${appointment.id}`}
+            >
               View Journey
             </Link>
           </Button>

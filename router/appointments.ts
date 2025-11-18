@@ -376,7 +376,7 @@ export const createAppointment = os
           billId: bill.id,
           itemableType: "consultation",
           itemableId: appointment.id,
-          itemName: `Consultation - Dr. ${doctor.user.name}`,
+          itemName: `Consultation - ${doctor.user.name}`,
           quantity: 1,
           unitPrice: totalFee,
           total: totalFee,
