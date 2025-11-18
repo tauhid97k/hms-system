@@ -8,7 +8,7 @@ export const createAppointmentSchema = object({
   appointmentType: string()
     .oneOf(["NEW", "FOLLOWUP"], "Invalid appointment type")
     .required("Appointment type is required"),
-  chiefComplaint: string().optional().nullable(),
+  chiefComplaint: string().nullable().default(null),
 });
 
 // Update Appointment Schema

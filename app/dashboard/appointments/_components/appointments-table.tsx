@@ -205,7 +205,9 @@ export function AppointmentsTable({
               {appointment.status === "IN_CONSULTATION" && (
                 <DropdownMenuItem asChild>
                   <Link
-                    href={`/dashboard/appointments/${appointment.id}/prescription`}
+                    href={{
+                      pathname: `/dashboard/appointments/${appointment.id}/prescription`,
+                    }}
                   >
                     <LuPill />
                     Prescribe

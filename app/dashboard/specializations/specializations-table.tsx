@@ -36,10 +36,15 @@ import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { useDebounceValue } from "usehooks-ts";
-import { LuEllipsisVertical, LuPencil, LuPower, LuTrash2 } from "react-icons/lu";
+import { useMemo, useState } from "react";
+import {
+  LuEllipsisVertical,
+  LuPencil,
+  LuPower,
+  LuTrash2,
+} from "react-icons/lu";
 import { toast } from "sonner";
+import { useDebounceCallback } from "usehooks-ts";
 import { CreateSpecializationDialog } from "./create-specialization-dialog";
 import { EditSpecializationDialog } from "./edit-specialization-dialog";
 
@@ -49,30 +54,44 @@ type SpecializationsTableProps = {
   initialData: PaginatedData<Specialization>;
 };
 
-export function SpecializationsTable({ initialData }: SpecializationsTableProps) {
+export function SpecializationsTable({
+  initialData,
+}: SpecializationsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = useMemo(() => new URLSearchParams(searchParams), [searchParams]);
+  const params = useMemo(
+    () => new URLSearchParams(searchParams),
+    [searchParams],
+  );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingSpecialization, setEditingSpecialization] = useState<Specialization | null>(null);
-  const [deletingSpecialization, setDeletingSpecialization] = useState<Specialization | null>(null);
+  const [editingSpecialization, setEditingSpecialization] =
+    useState<Specialization | null>(null);
+  const [deletingSpecialization, setDeletingSpecialization] =
+    useState<Specialization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [debouncedSearch] = useDebounceValue(searchTerm, 500);
-  const [statusFilter, setStatusFilter] = useState(searchParams.get("isActive") || "all");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("isActive") || "all",
+  );
 
-  useEffect(() => {
-    if (debouncedSearch !== (searchParams.get("search") || "")) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
-      } else {
-        params.delete("search");
-      }
-      params.set("page", "1");
-      router.push(`?${params.toString()}`, { scroll: false });
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
     }
-  }, [debouncedSearch, searchParams, params, router]);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
+  };
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -96,12 +115,16 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
   };
 
   const handleToggleStatus = async (specialization: Specialization) => {
-    const { error } = await safeClient.specializations.toggleStatus(specialization.id);
+    const { error } = await safeClient.specializations.toggleStatus(
+      specialization.id,
+    );
 
     if (error) {
       toast.error(error.message || "Failed to update status");
     } else {
-      toast.success(`Specialization ${specialization.isActive ? "deactivated" : "activated"}`);
+      toast.success(
+        `Specialization ${specialization.isActive ? "deactivated" : "activated"}`,
+      );
       router.refresh();
     }
   };
@@ -110,7 +133,9 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
     if (!deletingSpecialization) return;
 
     setIsDeleting(true);
-    const { error } = await safeClient.specializations.delete(deletingSpecialization.id);
+    const { error } = await safeClient.specializations.delete(
+      deletingSpecialization.id,
+    );
 
     if (error) {
       toast.error(error.message || "Failed to delete specialization");
@@ -131,7 +156,9 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
     {
       accessorKey: "code",
       header: "Code",
-      cell: ({ row }) => <div className="font-mono text-sm">{row.original.code}</div>,
+      cell: ({ row }) => (
+        <div className="font-mono text-sm">{row.original.code}</div>
+      ),
     },
     {
       accessorKey: "description",
@@ -145,7 +172,11 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
     {
       accessorKey: "_count.employeeSpecializations",
       header: "Employees",
-      cell: ({ row }) => <div className="text-sm text-center">{row.original._count?.employeeSpecializations || 0}</div>,
+      cell: ({ row }) => (
+        <div className="text-center text-sm">
+          {row.original._count?.employeeSpecializations || 0}
+        </div>
+      ),
     },
     {
       accessorKey: "isActive",
@@ -160,7 +191,9 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
       accessorKey: "createdAt",
       header: "Created",
       cell: ({ row }) => (
-        <div className="text-sm text-muted-foreground">{formatDateTime(row.original.createdAt)}</div>
+        <div className="text-sm text-muted-foreground">
+          {formatDateTime(row.original.createdAt)}
+        </div>
       ),
     },
     {
@@ -179,14 +212,18 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                setEditingSpecialization(specialization);
-                setIsEditDialogOpen(true);
-              }}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditingSpecialization(specialization);
+                  setIsEditDialogOpen(true);
+                }}
+              >
                 <LuPencil />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleToggleStatus(specialization)}>
+              <DropdownMenuItem
+                onClick={() => handleToggleStatus(specialization)}
+              >
                 <LuPower />
                 {specialization.isActive ? "Deactivate" : "Activate"}
               </DropdownMenuItem>
@@ -209,7 +246,9 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-medium">Specializations</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>Add Specialization</Button>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Add Specialization
+        </Button>
       </div>
 
       <div className="rounded-xl border bg-card p-6">
@@ -218,7 +257,7 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
             type="search"
             placeholder="Search specializations..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select value={statusFilter} onValueChange={handleStatusChange}>
@@ -240,7 +279,10 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
         />
       </div>
 
-      <CreateSpecializationDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
+      <CreateSpecializationDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
 
       {editingSpecialization && (
         <EditSpecializationDialog
@@ -261,7 +303,8 @@ export function SpecializationsTable({ initialData }: SpecializationsTableProps)
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the specialization &quot;{deletingSpecialization?.name}&quot; (Code:{" "}
+              This will permanently delete the specialization &quot;
+              {deletingSpecialization?.name}&quot; (Code:{" "}
               {deletingSpecialization?.code}). This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

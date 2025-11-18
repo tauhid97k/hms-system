@@ -20,6 +20,7 @@ import { LuCheck, LuChevronDown } from "react-icons/lu";
 export interface AdvancedSelectOption {
   value: string;
   label: string;
+  description?: string;
 }
 
 interface AdvancedSelectProps {
@@ -89,7 +90,14 @@ export function AdvancedSelect({
                     onSelect={() => handleSelect(option.value)}
                     className="flex cursor-pointer items-center justify-between"
                   >
-                    <span>{option.label}</span>
+                    <div className="flex flex-col">
+                      <span>{option.label}</span>
+                      {option.description && (
+                        <span className="text-xs text-muted-foreground">
+                          {option.description}
+                        </span>
+                      )}
+                    </div>
                     {isSelected && <LuCheck className="size-4" />}
                   </CommandItem>
                 );

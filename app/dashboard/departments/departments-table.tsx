@@ -36,7 +36,7 @@ import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   LuEllipsisVertical,
   LuPencil,
@@ -45,7 +45,7 @@ import {
   LuTrash2,
 } from "react-icons/lu";
 import { toast } from "sonner";
-import { useDebounceValue } from "usehooks-ts";
+import { useDebounceCallback } from "usehooks-ts";
 import { CreateDepartmentDialog } from "./create-department-dialog";
 import { EditDepartmentDialog } from "./edit-department-dialog";
 
@@ -70,23 +70,25 @@ export function DepartmentsTable({ initialData }: DepartmentsTableProps) {
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || "",
   );
-  const [debouncedSearch] = useDebounceValue(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("isActive") || "all",
   );
 
-  // Auto-search when debounced value changes
-  useEffect(() => {
-    if (debouncedSearch !== (searchParams.get("search") || "")) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
-      } else {
-        params.delete("search");
-      }
-      params.set("page", "1");
-      router.push(`?${params.toString()}`, { scroll: false });
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
     }
-  }, [debouncedSearch]);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
+  };
 
   // Handle status filter change
   const handleStatusChange = (value: string) => {
@@ -253,7 +255,7 @@ export function DepartmentsTable({ initialData }: DepartmentsTableProps) {
             type="search"
             placeholder="Search departments..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select value={statusFilter} onValueChange={handleStatusChange}>

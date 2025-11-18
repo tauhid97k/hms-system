@@ -1,11 +1,11 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
+import {
+  AdvancedSelect,
+  AdvancedSelectOption,
+} from "@/components/ui/advanced-select";
 import { Button } from "@/components/ui/button";
-import { LuPrinter } from "react-icons/lu";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
-import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -13,9 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { Doctor, Patient } from "@/lib/dataTypes";
 import { createAppointmentSchema } from "@/schema/appointmentSchema";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { Controller, useForm } from "react-hook-form";
+import { LuPrinter } from "react-icons/lu";
 import type { InferType } from "yup";
-import type { Patient, Doctor } from "@/lib/dataTypes";
 
 type CreateAppointmentFormData = InferType<typeof createAppointmentSchema>;
 
@@ -23,7 +27,10 @@ type AppointmentFormProps = {
   patients: Patient[];
   doctors: Doctor[];
   currentEmployeeId: string;
-  onSubmit: (data: CreateAppointmentFormData, shouldPrint?: boolean) => Promise<void>;
+  onSubmit: (
+    data: CreateAppointmentFormData,
+    shouldPrint?: boolean,
+  ) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
 };
@@ -37,32 +44,65 @@ export function AppointmentForm({
   isLoading,
 }: AppointmentFormProps) {
   const form = useForm<CreateAppointmentFormData>({
-    resolver: yupResolver(createAppointmentSchema) as any,
+    resolver: yupResolver(createAppointmentSchema),
     defaultValues: {
       patientId: "",
       doctorId: "",
       assignedBy: currentEmployeeId,
       appointmentType: "NEW",
-      chiefComplaint: "",
+      chiefComplaint: null,
     },
   });
 
-  const handleSubmit = async (data: CreateAppointmentFormData, shouldPrint = false) => {
+  const handleSubmit = async (
+    data: CreateAppointmentFormData,
+    shouldPrint = false,
+  ) => {
     await onSubmit(data, shouldPrint);
     form.reset({
       patientId: "",
       doctorId: "",
       assignedBy: currentEmployeeId,
       appointmentType: "NEW",
-      chiefComplaint: "",
+      chiefComplaint: null,
     });
   };
 
   // Filter only available doctors
   const availableDoctors = doctors.filter((doctor) => doctor.isAvailable);
 
+  // Convert patients to AdvancedSelect options
+  const patientOptions: AdvancedSelectOption[] = patients.map((patient) => ({
+    value: patient.id,
+    label: `${patient.name} (${patient.patientId})`,
+    description: `${patient.age}y, ${patient.gender || "N/A"}`,
+  }));
+
+  // Convert doctors to AdvancedSelect options
+  const doctorOptions: AdvancedSelectOption[] = availableDoctors.map(
+    (doctor) => {
+      const department = doctor.department?.name || "No department";
+      const specializations = doctor.employeeSpecializations
+        ?.map((es) => es.specialization.name)
+        .join(", ");
+
+      const description = specializations
+        ? `${department} • ${specializations}`
+        : department;
+
+      return {
+        value: doctor.id,
+        label: doctor.user?.name || "Unknown",
+        description,
+      };
+    },
+  );
+
   return (
-    <form onSubmit={form.handleSubmit((data) => handleSubmit(data, false))} className="space-y-6">
+    <form
+      onSubmit={form.handleSubmit((data) => handleSubmit(data, false))}
+      className="space-y-6"
+    >
       <fieldset disabled={isLoading} className="space-y-6">
         {/* Patient Selection */}
         <Controller
@@ -73,18 +113,13 @@ export function AppointmentForm({
               <FieldLabel>
                 Patient <span className="text-destructive">*</span>
               </FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select patient" />
-                </SelectTrigger>
-                <SelectContent>
-                  {patients.map((patient) => (
-                    <SelectItem key={patient.id} value={patient.id}>
-                      {patient.name} ({patient.patientId}) - {patient.age}y, {patient.gender || "N/A"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AdvancedSelect
+                options={patientOptions}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Search and select patient..."
+                emptyMessage="No patients found"
+              />
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}
@@ -99,30 +134,13 @@ export function AppointmentForm({
               <FieldLabel>
                 Doctor <span className="text-destructive">*</span>
               </FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select doctor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDoctors.length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      No available doctors
-                    </div>
-                  ) : (
-                    availableDoctors.map((doctor) => (
-                      <SelectItem key={doctor.id} value={doctor.id}>
-                        Dr. {doctor.user?.name || "Unknown"}
-                        {doctor.department && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            - {doctor.department.name}
-                          </span>
-                        )}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <AdvancedSelect
+                options={doctorOptions}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Search and select doctor..."
+                emptyMessage="No available doctors"
+              />
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}
@@ -143,7 +161,9 @@ export function AppointmentForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NEW">New Appointment</SelectItem>
-                  <SelectItem value="FOLLOWUP">Follow-up Appointment</SelectItem>
+                  <SelectItem value="FOLLOWUP">
+                    Follow-up Appointment
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FieldError errors={[fieldState.error]} />

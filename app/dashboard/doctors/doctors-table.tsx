@@ -28,17 +28,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Doctor, PaginatedData, Department, Specialization } from "@/lib/dataTypes";
+import type {
+  Department,
+  Doctor,
+  PaginatedData,
+  Specialization,
+} from "@/lib/dataTypes";
 import { formatDateTime } from "@/lib/date-format";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useDebounceValue } from "usehooks-ts";
-import { LuEllipsisVertical, LuEye, LuPencil, LuPower, LuTrash2 } from "react-icons/lu";
-import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import {
+  LuEllipsisVertical,
+  LuEye,
+  LuPencil,
+  LuPower,
+  LuTrash2,
+} from "react-icons/lu";
+import { toast } from "sonner";
+import { useDebounceCallback } from "usehooks-ts";
 
 const safeClient = createSafeClient(client);
 
@@ -48,7 +59,11 @@ type DoctorsTableProps = {
   specializations: Specialization[];
 };
 
-export function DoctorsTable({ initialData, departments, specializations }: DoctorsTableProps) {
+export function DoctorsTable({
+  initialData,
+  departments,
+  specializations,
+}: DoctorsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [deletingDoctor, setDeletingDoctor] = useState<Doctor | null>(null);
@@ -56,7 +71,6 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || "",
   );
-  const [debouncedSearch] = useDebounceValue(searchTerm, 500);
   const [departmentFilter, setDepartmentFilter] = useState(
     searchParams.get("departmentId") || "all",
   );
@@ -67,19 +81,21 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
     searchParams.get("isAvailable") || "all",
   );
 
-  // Auto-search when debounced value changes
-  useEffect(() => {
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
     const params = new URLSearchParams(searchParams);
-    if (debouncedSearch !== (searchParams.get("search") || "")) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
-      } else {
-        params.delete("search");
-      }
-      params.set("page", "1");
-      router.push(`?${params.toString()}`, { scroll: false });
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
     }
-  }, [debouncedSearch, router, searchParams]);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
+  };
 
   // Handle department filter change
   const handleDepartmentChange = (value: string) => {
@@ -182,13 +198,11 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       cell: ({ row }) => {
         const department = row.original.department;
         if (!department) {
-          return <span className="text-sm text-center text-muted-foreground">-</span>;
+          return (
+            <span className="text-center text-sm text-muted-foreground">-</span>
+          );
         }
-        return (
-          <Badge variant="secondary">
-            {department.name}
-          </Badge>
-        );
+        return <Badge variant="secondary">{department.name}</Badge>;
       },
     },
     {
@@ -225,7 +239,7 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       accessorKey: "consultationFee",
       header: "Consultation Fee",
       cell: ({ row }) => (
-        <div className="text-sm font-medium text-center">
+        <div className="text-center text-sm font-medium">
           {row.original.consultationFee !== null
             ? `$${row.original.consultationFee.toFixed(2)}`
             : "-"}
@@ -245,7 +259,9 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
       accessorKey: "_count.doctorAppointments",
       header: "Appointments",
       cell: ({ row }) => (
-        <div className="text-sm text-center">{row.original._count?.doctorAppointments || 0}</div>
+        <div className="text-center text-sm">
+          {row.original._count?.doctorAppointments || 0}
+        </div>
       ),
     },
     {
@@ -283,7 +299,9 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
                   Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleToggleAvailability(doctor)}>
+              <DropdownMenuItem
+                onClick={() => handleToggleAvailability(doctor)}
+              >
                 <LuPower />
                 {doctor.isAvailable ? "Mark Unavailable" : "Mark Available"}
               </DropdownMenuItem>
@@ -316,7 +334,7 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
             type="search"
             placeholder="Search doctors..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select
@@ -382,8 +400,8 @@ export function DoctorsTable({ initialData, departments, specializations }: Doct
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete Dr. {deletingDoctor?.user?.name}. This
-              action cannot be undone.
+              This will permanently delete Dr. {deletingDoctor?.user?.name}.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

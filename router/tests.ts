@@ -111,10 +111,17 @@ export const updateTest = os
     ),
   )
   .handler(async ({ input }) => {
-    const { id, ...data } = input;
+    const { id, ...rest } = input;
     const test = await prisma.test_types.update({
       where: { id },
-      data,
+      data: {
+        name: rest.name,
+        code: rest.code,
+        price: rest.price,
+        description: rest.description,
+        labId: rest.labId,
+        isActive: rest.isActive,
+      },
     });
     return test;
   });

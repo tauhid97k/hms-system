@@ -309,11 +309,38 @@ export type QueueAppointment = {
   };
 };
 
+// Lab (simple version for dropdowns)
+export type Lab = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+// Lab (full version with all fields)
+export type LabFull = Lab & {
+  description: string | null;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+// Test Type
 export type TestType = {
   id: string;
   name: string;
+  code: string;
   description: string | null;
-  labId: string | null;
   price: number;
+  labId: string | null;
   isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+// Test Type with Lab relation (for table views)
+export type TestTableRow = TestType & {
+  lab?: {
+    id: string;
+    name: string;
+  } | null;
 };

@@ -29,9 +29,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatDateTime } from "@/lib/date-format";
 import { LuEllipsisVertical, LuEye, LuPrinter } from "react-icons/lu";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useDebounceValue } from "usehooks-ts";
+import { useDebounceCallback } from "usehooks-ts";
 import { Input } from "@/components/ui/input";
 
 type BillsTableProps = {
@@ -57,21 +57,22 @@ export function BillsTable({ initialData }: BillsTableProps) {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [openBillDialog, setOpenBillDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [debouncedSearch] = useDebounceValue(searchTerm, 500);
 
-  // Auto-search when debounced value changes
-  useEffect(() => {
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
     const params = new URLSearchParams(searchParams);
-    if (debouncedSearch !== (searchParams.get("search") || "")) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
-      } else {
-        params.delete("search");
-      }
-      params.set("page", "1");
-      router.push(`?${params.toString()}`, { scroll: false });
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
     }
-  }, [debouncedSearch, router, searchParams]);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
+  };
 
   const handleViewBill = (bill: Bill) => {
     setSelectedBill(bill);
@@ -242,7 +243,7 @@ export function BillsTable({ initialData }: BillsTableProps) {
             type="search"
             placeholder="Search by bill number..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select

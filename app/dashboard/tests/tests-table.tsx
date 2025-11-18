@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DataTable } from "@/components/ui/data-table";
 import {
   Dialog,
@@ -48,7 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { PaginatedData } from "@/lib/dataTypes";
+import type { Lab, PaginatedData, TestTableRow } from "@/lib/dataTypes";
 import { formatDateTime } from "@/lib/date-format";
 import { client } from "@/lib/orpc";
 import { testSchema, type TestSchemaType } from "@/schema/testSchema";
@@ -60,45 +59,28 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { LuEllipsisVertical, LuPencil, LuPower, LuTrash } from "react-icons/lu";
 import { toast } from "sonner";
+import { useDebounceCallback } from "usehooks-ts";
 
 const safeClient = createSafeClient(client);
-
-type Lab = {
-  id: string;
-  name: string;
-  code: string;
-};
-
-type Test = {
-  id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  price: number;
-  labId: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  lab?: {
-    id: string;
-    name: string;
-  } | null;
-};
 
 export const TestsTable = ({
   tests,
   labs,
 }: {
-  tests: PaginatedData<Test>;
+  tests: PaginatedData<TestTableRow>;
   labs: Lab[];
 }) => {
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = new URLSearchParams(searchParams);
+
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<TestTableRow | null>(null);
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
 
   // Convert labs to options
   const labOptions: AdvancedSelectOption[] = labs.map((lab) => ({
@@ -189,8 +171,9 @@ export const TestsTable = ({
     router.refresh();
   };
 
-  // Handle Search
-  const handleSearch = (value: string) => {
+  // Debounced search handler
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
+    const params = new URLSearchParams(searchParams);
     if (value) {
       params.set("search", value);
     } else {
@@ -198,6 +181,11 @@ export const TestsTable = ({
     }
     params.set("page", "1");
     router.push(`?${params}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
   };
 
   // Handle Lab Filter
@@ -231,7 +219,7 @@ export const TestsTable = ({
   };
 
   // Open Edit Dialog
-  const openEdit = (test: Test) => {
+  const openEdit = (test: TestTableRow) => {
     setSelectedTest(test);
     editForm.reset({
       name: test.name,
@@ -245,27 +233,7 @@ export const TestsTable = ({
   };
 
   // Table Columns
-  const columns: ColumnDef<Test>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-    },
+  const columns: ColumnDef<TestTableRow>[] = [
     {
       header: "Name",
       accessorKey: "name",
@@ -354,8 +322,8 @@ export const TestsTable = ({
             type="search"
             placeholder="Search tests..."
             className="max-w-xs"
-            defaultValue={searchParams.get("search") || ""}
-            onChange={(e) => handleSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
           <AdvancedSelect
             value={searchParams.get("labId") || "all"}

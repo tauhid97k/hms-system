@@ -1,5 +1,6 @@
 import { client } from "@/lib/orpc";
 import { notFound, redirect } from "next/navigation";
+import type { Route } from "next";
 import { NewPrescriptionForm } from "./_components/new-prescription-form";
 
 type PageProps = {
@@ -21,7 +22,7 @@ export default async function NewPrescriptionPage({ params }: PageProps) {
 
   if (existingPrescription) {
     // Redirect to view prescription if it already exists
-    redirect(`/dashboard/appointments/${id}`);
+    redirect(`/dashboard/appointments/${id}` as Route);
   }
 
   // Fetch medicines, instructions, and tests

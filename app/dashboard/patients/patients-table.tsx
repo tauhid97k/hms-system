@@ -30,17 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Patient, PaginatedData } from "@/lib/dataTypes";
+import type { PaginatedData, Patient } from "@/lib/dataTypes";
 import { formatDateTime } from "@/lib/date-format";
 import { client } from "@/lib/orpc";
 import { createSafeClient } from "@orpc/client";
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useDebounceValue } from "usehooks-ts";
+import { useState } from "react";
 import { LuEllipsisVertical, LuEye, LuPencil, LuTrash2 } from "react-icons/lu";
 import { toast } from "sonner";
-import Link from "next/link";
+import { useDebounceCallback } from "usehooks-ts";
 
 const safeClient = createSafeClient(client);
 
@@ -69,7 +69,6 @@ export function PatientsTable({ initialData }: PatientsTableProps) {
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || "",
   );
-  const [debouncedSearch] = useDebounceValue(searchTerm, 500);
   const [genderFilter, setGenderFilter] = useState(
     searchParams.get("gender") || "all",
   );
@@ -80,18 +79,22 @@ export function PatientsTable({ initialData }: PatientsTableProps) {
     searchParams.get("isActive") || "all",
   );
 
-  // Auto-search when debounced value changes
-  useEffect(() => {
-    if (debouncedSearch !== (searchParams.get("search") || "")) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
-      } else {
-        params.delete("search");
-      }
-      params.set("page", "1");
-      router.push(`?${params.toString()}`, { scroll: false });
+  // Debounced search handler
+  const handleSearchDebounced = useDebounceCallback((value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
     }
-  }, [debouncedSearch]);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, 500);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    handleSearchDebounced(value);
+  };
 
   // Handle gender filter change
   const handleGenderChange = (value: string) => {
@@ -282,7 +285,7 @@ export function PatientsTable({ initialData }: PatientsTableProps) {
             type="search"
             placeholder="Search patients..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select value={genderFilter} onValueChange={handleGenderChange}>
@@ -300,7 +303,7 @@ export function PatientsTable({ initialData }: PatientsTableProps) {
             value={bloodGroupFilter}
             onValueChange={handleBloodGroupChange}
           >
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger>
               <SelectValue placeholder="Blood Group" />
             </SelectTrigger>
             <SelectContent>
