@@ -41,14 +41,10 @@ export async function getQueueForDoctor(doctorId: string) {
           },
         },
       },
-      assignedByEmployee: {
+      initiatedByUser: {
         select: {
           id: true,
-          user: {
-            select: {
-              name: true,
-            },
-          },
+          name: true,
         },
       },
     },

@@ -304,9 +304,7 @@ export function AppointmentsTable({
       </div>
 
       <InvoiceModal
-        appointmentId={selectedAppointmentId}
-        currentEmployeeId={currentEmployeeId}
-        paymentMethods={paymentMethods}
+        appointmentId={selectedAppointmentId}        paymentMethods={paymentMethods}
         open={invoiceModalOpen}
         onOpenChange={setInvoiceModalOpen}
       />

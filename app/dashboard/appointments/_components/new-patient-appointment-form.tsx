@@ -25,7 +25,6 @@ type NewPatientAppointmentFormData = InferType<
 
 type NewPatientAppointmentFormProps = {
   doctors: Doctor[];
-  currentEmployeeId: string;
   onSubmit: (data: NewPatientAppointmentFormData) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
@@ -33,7 +32,6 @@ type NewPatientAppointmentFormProps = {
 
 export function NewPatientAppointmentForm({
   doctors,
-  currentEmployeeId,
   onSubmit,
   onCancel,
   isLoading,
@@ -46,7 +44,6 @@ export function NewPatientAppointmentForm({
       patientAge: 0,
       patientGender: "MALE",
       doctorId: "",
-      assignedBy: currentEmployeeId,
       appointmentType: "NEW" as const,
       chiefComplaint: null,
     },
@@ -199,13 +196,6 @@ export function NewPatientAppointmentForm({
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}
-        />
-
-        {/* Assigned By (Hidden - will be set from session) */}
-        <Controller
-          name="assignedBy"
-          control={form.control}
-          render={({ field }) => <input type="hidden" {...field} />}
         />
 
         {/* Actions */}

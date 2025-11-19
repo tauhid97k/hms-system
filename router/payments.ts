@@ -1,7 +1,6 @@
 import prisma from "@/lib/prisma";
-import { os } from "@orpc/server";
 import { number, object, string } from "yup";
-import { AppointmentEventType } from "../prisma/generated/client";
+import { os, protectedOS } from "./context";
 
 // Create payment schema
 const createPaymentSchema = object({
@@ -10,20 +9,19 @@ const createPaymentSchema = object({
     .required("Amount is required")
     .positive("Amount must be positive"),
   paymentMethod: string().required("Payment method is required"),
-  receivedBy: string().required("Received by is required"),
   transactionId: string().optional().nullable(),
   notes: string().optional().nullable(),
 });
 
 // Create payment and update bill
-export const createPayment = os
+export const createPayment = protectedOS
   .route({
     method: "POST",
     path: "/payments",
     summary: "Create a payment and update bill status",
   })
   .input(createPaymentSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     // Get bill details
     const bill = await prisma.bills.findUnique({
       where: { id: input.billId },
@@ -34,6 +32,11 @@ export const createPayment = os
 
     if (!bill) {
       throw new Error("Bill not found");
+    }
+
+    // Security check: Prevent payment on already paid bills
+    if (bill.status === "PAID") {
+      throw new Error("Already Paid");
     }
 
     // Validate payment amount
@@ -51,7 +54,7 @@ export const createPayment = os
           billId: input.billId,
           amount: input.amount,
           paymentMethod: input.paymentMethod,
-          receivedBy: input.receivedBy,
+          initiatedBy: context.user.id,
           transactionId: input.transactionId || null,
           notes: input.notes || null,
           status: "success",
@@ -76,28 +79,6 @@ export const createPayment = os
           status: newStatus,
         },
       });
-
-      // 3. Log appointment event if bill is linked to appointment
-      if (bill.appointmentId) {
-        await tx.appointment_events.create({
-          data: {
-            appointmentId: bill.appointmentId,
-            eventType:
-              newStatus === "PAID"
-                ? AppointmentEventType.PAYMENT_RECEIVED
-                : AppointmentEventType.PAYMENT_PARTIAL,
-            performedBy: input.receivedBy,
-            description: `Payment of ৳${input.amount} received via ${input.paymentMethod}`,
-            metadata: {
-              paymentId: payment.id,
-              billId: input.billId,
-              amount: input.amount,
-              paymentMethod: input.paymentMethod,
-              newStatus,
-            },
-          },
-        });
-      }
 
       return { payment, bill: updatedBill };
     });
@@ -163,13 +144,9 @@ export const getBillWithPayments = os
             paymentDate: "desc",
           },
           include: {
-            receivedByEmployee: {
+            initiatedByUser: {
               select: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
+                name: true,
               },
             },
           },

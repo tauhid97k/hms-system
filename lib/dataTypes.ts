@@ -301,7 +301,7 @@ export type QueueAppointment = {
       email: string;
     };
   };
-  assignedByEmployee: {
+  initiatedByUser: {
     id: string;
     user: {
       name: string;

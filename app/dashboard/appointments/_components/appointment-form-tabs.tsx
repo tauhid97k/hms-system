@@ -18,7 +18,6 @@ type NewPatientAppointmentFormData = InferType<
 type AppointmentFormTabsProps = {
   patients: Patient[];
   doctors: Doctor[];
-  currentEmployeeId: string;
   onSubmitExisting: (
     data: AppointmentFormData,
     shouldPrint?: boolean,
@@ -31,7 +30,6 @@ type AppointmentFormTabsProps = {
 export function AppointmentFormTabs({
   patients,
   doctors,
-  currentEmployeeId,
   onSubmitExisting,
   onSubmitNew,
   onCancel,
@@ -48,7 +46,6 @@ export function AppointmentFormTabs({
         <div className="rounded-xl border bg-card p-6">
           <NewPatientAppointmentForm
             doctors={doctors}
-            currentEmployeeId={currentEmployeeId}
             onSubmit={onSubmitNew}
             onCancel={onCancel}
             isLoading={isLoading}
@@ -61,7 +58,6 @@ export function AppointmentFormTabs({
           <AppointmentForm
             patients={patients}
             doctors={doctors}
-            currentEmployeeId={currentEmployeeId}
             onSubmit={onSubmitExisting}
             onCancel={onCancel}
             isLoading={isLoading}

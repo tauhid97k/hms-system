@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppointmentFormTabs } from "./appointment-form-tabs";
+import type { Doctor, Patient } from "@/lib/dataTypes";
 import { client } from "@/lib/orpc";
-import { createSafeClient } from "@orpc/client";
-import { toast } from "sonner";
-import type { InferType } from "yup";
 import {
   createAppointmentSchema,
   createAppointmentWithNewPatientSchema,
 } from "@/schema/appointmentSchema";
-import type { Patient, Doctor } from "@/lib/dataTypes";
+import { createSafeClient } from "@orpc/client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import type { InferType } from "yup";
+import { AppointmentFormTabs } from "./appointment-form-tabs";
 
 const safeClient = createSafeClient(client);
 
@@ -23,13 +23,11 @@ type CreateAppointmentWithNewPatientFormData = InferType<
 type NewAppointmentFormProps = {
   patients: Patient[];
   doctors: Doctor[];
-  currentEmployeeId: string;
 };
 
 export function NewAppointmentForm({
   patients,
   doctors,
-  currentEmployeeId,
 }: NewAppointmentFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +43,7 @@ export function NewAppointmentForm({
       toast.error(error.message || "Failed to register appointment");
     } else {
       toast.success(
-        `Appointment registered successfully. Serial: ${result.serialNumber}, Queue Position: ${result.queuePosition}`,
+        `Appointment registered successfully. Serial: ${result.appointment.serialNumber}, Queue Position: ${result.appointment.queuePosition}`,
       );
 
       if (shouldPrint) {
@@ -87,7 +85,6 @@ export function NewAppointmentForm({
     <AppointmentFormTabs
       patients={patients}
       doctors={doctors}
-      currentEmployeeId={currentEmployeeId}
       onSubmitExisting={handleSubmitExisting}
       onSubmitNew={handleSubmitNew}
       onCancel={handleCancel}

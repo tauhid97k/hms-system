@@ -14,15 +14,14 @@ import {
   updateAppointmentSchema,
   updateAppointmentStatusSchema,
 } from "@/schema/appointmentSchema";
-import { os } from "@orpc/server";
 import { format } from "date-fns";
 import { number, object, string } from "yup";
 import {
-  AppointmentEventType,
   AppointmentStatus,
   AppointmentType,
   Prisma,
 } from "../prisma/generated/client";
+import { os, protectedOS } from "./context";
 
 // Get all appointments with pagination and filters
 export const getAppointments = os
@@ -151,14 +150,11 @@ export const getAppointment = os
             },
           },
         },
-        assignedByEmployee: {
+        initiatedByUser: {
           select: {
             id: true,
-            user: {
-              select: {
-                name: true,
-              },
-            },
+            name: true,
+            email: true,
           },
         },
       },
@@ -209,56 +205,6 @@ export const getAppointmentBills = os
     return bills;
   });
 
-// Get appointment events (paginated for performance)
-export const getAppointmentEvents = os
-  .route({
-    method: "GET",
-    path: "/appointments/:id/events",
-    summary: "Get events for an appointment (paginated)",
-  })
-  .input(
-    object({
-      id: string().required(),
-      page: number().default(1).min(1),
-      limit: number().default(20).min(1).max(100),
-    }),
-  )
-  .handler(async ({ input }) => {
-    const skip = (input.page - 1) * input.limit;
-
-    const [events, total] = await prisma.$transaction([
-      prisma.appointment_events.findMany({
-        where: { appointmentId: input.id },
-        include: {
-          performedByEmployee: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { performedAt: "asc" },
-        skip,
-        take: input.limit,
-      }),
-      prisma.appointment_events.count({ where: { appointmentId: input.id } }),
-    ]);
-
-    return {
-      data: events,
-      meta: {
-        page: input.page,
-        limit: input.limit,
-        total,
-        totalPages: Math.ceil(total / input.limit),
-      },
-    };
-  });
-
 // Get appointment prescriptions (separate endpoint)
 export const getAppointmentPrescriptions = os
   .route({
@@ -300,14 +246,14 @@ export const getAppointmentPrescriptions = os
   });
 
 // Create appointment with auto-billing
-export const createAppointment = os
+export const createAppointment = protectedOS
   .route({
     method: "POST",
     path: "/appointments",
     summary: "Create a new appointment",
   })
   .input(createAppointmentSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     // Get doctor fees
     const doctor = await prisma.employees.findUnique({
       where: { id: input.doctorId },
@@ -338,7 +284,7 @@ export const createAppointment = os
         data: {
           patientId: input.patientId,
           doctorId: input.doctorId,
-          assignedBy: input.assignedBy,
+          initiatedBy: context.user.id,
           appointmentType: input.appointmentType as AppointmentType,
           chiefComplaint: input.chiefComplaint,
           serialNumber,
@@ -368,6 +314,7 @@ export const createAppointment = os
           paidAmount: 0,
           status: "PENDING",
           billingDate: new Date(),
+          initiatedBy: context.user.id,
         },
       });
 
@@ -384,53 +331,24 @@ export const createAppointment = os
         },
       });
 
-      // 4. Log events
-      await tx.appointment_events.createMany({
-        data: [
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.APPOINTMENT_REGISTERED,
-            performedBy: input.assignedBy,
-            description: "Appointment registered",
-          },
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.QUEUE_JOINED,
-            performedBy: input.assignedBy,
-            description: `Joined queue at position ${queuePosition}`,
-          },
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.CONSULTATION_BILLED,
-            performedBy: input.assignedBy,
-            description: `Billed ${totalFee}`,
-            metadata: {
-              billId: bill.id,
-              amount: totalFee,
-              billNumber,
-            },
-          },
-        ],
-      });
-
       return { appointment, bill };
     });
 
     // Emit queue update (non-blocking)
     await emitQueueUpdate(input.doctorId);
 
-    return result.appointment;
+    return result;
   });
 
 // Create appointment with new patient (simplified registration)
-export const createAppointmentWithNewPatient = os
+export const createAppointmentWithNewPatient = protectedOS
   .route({
     method: "POST",
     path: "/appointments/with-new-patient",
     summary: "Create appointment with new patient registration",
   })
   .input(createAppointmentWithNewPatientSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     // Get doctor fees
     const doctor = await prisma.employees.findUnique({
       where: { id: input.doctorId },
@@ -497,6 +415,7 @@ export const createAppointmentWithNewPatient = os
           age: input.patientAge,
           gender: input.patientGender as "MALE" | "FEMALE" | "OTHER",
           isActive: true,
+          initiatedBy: context.user.id,
         },
       });
 
@@ -505,7 +424,7 @@ export const createAppointmentWithNewPatient = os
         data: {
           patientId: patient.id,
           doctorId: input.doctorId,
-          assignedBy: input.assignedBy,
+          initiatedBy: context.user.id,
           appointmentType: input.appointmentType as AppointmentType,
           chiefComplaint: input.chiefComplaint,
           serialNumber,
@@ -535,6 +454,7 @@ export const createAppointmentWithNewPatient = os
           paidAmount: 0,
           status: "PENDING",
           billingDate: new Date(),
+          initiatedBy: context.user.id,
         },
       });
 
@@ -551,35 +471,6 @@ export const createAppointmentWithNewPatient = os
         },
       });
 
-      // 6. Log events
-      await tx.appointment_events.createMany({
-        data: [
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.APPOINTMENT_REGISTERED,
-            performedBy: input.assignedBy,
-            description: "Appointment registered with new patient",
-          },
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.QUEUE_JOINED,
-            performedBy: input.assignedBy,
-            description: `Joined queue at position ${queuePosition}`,
-          },
-          {
-            appointmentId: appointment.id,
-            eventType: AppointmentEventType.CONSULTATION_BILLED,
-            performedBy: input.assignedBy,
-            description: `Billed ${totalFee}`,
-            metadata: {
-              billId: bill.id,
-              amount: totalFee,
-              billNumber,
-            },
-          },
-        ],
-      });
-
       return { patient, appointment, bill };
     });
 
@@ -594,7 +485,7 @@ export const createAppointmentWithNewPatient = os
   });
 
 // Update appointment status
-export const updateAppointmentStatus = os
+export const updateAppointmentStatus = protectedOS
   .route({
     method: "PATCH",
     path: "/appointments/:id/status",
@@ -612,27 +503,6 @@ export const updateAppointmentStatus = os
       },
     });
 
-    // Map status to event type
-    const eventTypeMap: Record<string, AppointmentEventType> = {
-      IN_CONSULTATION: AppointmentEventType.ENTERED_ROOM,
-      COMPLETED: AppointmentEventType.CONSULTATION_COMPLETED,
-      CANCELLED: AppointmentEventType.APPOINTMENT_CANCELLED,
-    };
-
-    const eventType = eventTypeMap[input.status];
-
-    // Log event
-    if (eventType) {
-      await prisma.appointment_events.create({
-        data: {
-          appointmentId: input.id,
-          eventType: eventType,
-          performedBy: input.performedBy,
-          description: `Status changed to ${input.status}`,
-        },
-      });
-    }
-
     // If appointment is cancelled or completed, remove from queue and re-adjust positions
     if (input.status === "CANCELLED" || input.status === "COMPLETED") {
       await removeFromQueue(input.id);
@@ -645,7 +515,7 @@ export const updateAppointmentStatus = os
   });
 
 // Call next patient
-export const callNextPatient = os
+export const callNextPatient = protectedOS
   .route({
     method: "POST",
     path: "/appointments/queue/call-next",
@@ -676,16 +546,6 @@ export const callNextPatient = os
       data: {
         status: AppointmentStatus.IN_CONSULTATION,
         entryTime: new Date(),
-      },
-    });
-
-    // Log event
-    await prisma.appointment_events.create({
-      data: {
-        appointmentId: updated.id,
-        eventType: AppointmentEventType.QUEUE_CALLED,
-        performedBy: input.performedBy,
-        description: "Patient called from queue",
       },
     });
 

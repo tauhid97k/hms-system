@@ -15,6 +15,7 @@ export const getPaymentMethods = os
       select: {
         id: true,
         name: true,
+        isActive: true,
       },
     });
 

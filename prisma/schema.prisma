@@ -5,10 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
-
-// ============= ENUMS (Only for fixed types) =============
 
 enum Gender {
   MALE
@@ -66,77 +63,32 @@ enum NotificationType {
   SYSTEM
 }
 
-enum AppointmentEventType {
-  // Appointment Registration
-  APPOINTMENT_REGISTERED
-  APPOINTMENT_ASSIGNED
-
-  // Queue Management
-  QUEUE_JOINED
-  QUEUE_CALLED
-  QUEUE_SKIPPED
-
-  // Consultation Flow
-  ENTERED_ROOM
-  EXITED_ROOM
-  CONSULTATION_COMPLETED
-
-  // Clinical Actions
-  PRESCRIPTION_GIVEN
-  TESTS_ORDERED
-  REFERRAL_GIVEN
-
-  // Billing Events
-  CONSULTATION_BILLED
-  TESTS_BILLED
-  PAYMENT_RECEIVED
-  PAYMENT_PARTIAL
-  PAYMENT_REFUNDED
-
-  // Lab/Test Workflow
-  TEST_SAMPLE_COLLECTED
-  TEST_IN_PROGRESS
-  TEST_COMPLETED
-  TEST_REVIEWED
-  TEST_APPROVED
-  REPORT_GENERATED
-  REPORT_DELIVERED
-
-  // Document Events
-  DOCUMENT_UPLOADED
-  DOCUMENT_SHARED
-
-  // Appointment Completion
-  APPOINTMENT_COMPLETED
-  APPOINTMENT_CANCELLED
-  APPOINTMENT_RESCHEDULED
-
-  // Follow-up
-  FOLLOWUP_SCHEDULED
-  FOLLOWUP_REMINDER_SENT
-}
-
-// ============= USERS & AUTH =============
-
 model users {
-  id            String   @id @default(ulid())
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  password      String?
-  phone         String?
-  avatar        String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  userRoles       user_roles[]
-  employeeProfile employees?
-  sessions        sessions[]
-  accounts        accounts[]      @relation("UserAccounts")
-  documents       documents[]
-  notifications   notifications[]
+  id                     String          @id @default(ulid())
+  name                   String
+  email                  String          @unique
+  emailVerified          Boolean         @default(false)
+  password               String?
+  phone                  String?
+  avatar                 String?
+  isActive               Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  userRoles              user_roles[]
+  employeeProfile        employees?
+  sessions               sessions[]
+  accounts               accounts[]      @relation("UserAccounts")
+  documents              documents[]
+  notifications          notifications[]
+  initiatedAppointments  appointments[]  @relation("InitiatedAppointments")
+  initiatedBills         bills[]         @relation("InitiatedBills")
+  initiatedPayments      payments[]      @relation("InitiatedPayments")
+  initiatedPrescriptions prescriptions[] @relation("InitiatedPrescriptions")
+  initiatedTestOrders    test_orders[]   @relation("InitiatedTestOrders")
+  initiatedTestResults   test_results[]  @relation("InitiatedTestResults")
+  reviewedTestResults    test_results[]  @relation("ReviewedTestResults")
+  initiatedPatients      patients[]      @relation("InitiatedPatients")
+  auditLogs              audit_logs[]    @relation("AuditLogs")
 
   @@index([email])
   @@index([isActive])
@@ -151,8 +103,7 @@ model sessions {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -173,8 +124,7 @@ model accounts {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-
-  user users @relation("UserAccounts", fields: [userId], references: [id], onDelete: Cascade)
+  user                  users     @relation("UserAccounts", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, providerId])
   @@index([userId])
@@ -193,18 +143,15 @@ model verifications {
   @@index([identifier])
 }
 
-// ============= ROLES & PERMISSIONS =============
-
 model roles {
-  id          String   @id @default(ulid())
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  isSystem    Boolean  @default(false) // true for SUPER_ADMIN, ADMIN, DOCTOR, etc.
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id              String             @id @default(ulid())
+  name            String             @unique
+  slug            String             @unique
+  description     String?
+  isSystem        Boolean            @default(false)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
   userRoles       user_roles[]
   rolePermissions role_permissions[]
 
@@ -214,14 +161,13 @@ model roles {
 }
 
 model permissions {
-  id          String   @id @default(ulid())
-  name        String   @unique
-  slug        String   @unique
-  module      String // "patients", "visits", "billing", "labs", etc.
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id              String             @id @default(ulid())
+  name            String             @unique
+  slug            String             @unique
+  module          String
+  description     String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
   rolePermissions role_permissions[]
 
   @@index([slug])
@@ -229,12 +175,11 @@ model permissions {
 }
 
 model role_permissions {
-  id           String @id @default(ulid())
+  id           String      @id @default(ulid())
   roleId       String
   permissionId String
-
-  role       roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
   @@index([roleId])
@@ -245,140 +190,113 @@ model user_roles {
   id     String @id @default(ulid())
   userId String
   roleId String
-
-  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role roles @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user   users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   roles  @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@index([userId])
   @@index([roleId])
 }
 
-// ============= DEPARTMENTS =============
-
 model departments {
-  id          String   @id @default(ulid())
-  name        String   @unique
-  code        String   @unique
+  id          String      @id @default(ulid())
+  name        String      @unique
+  code        String      @unique
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  employees employees[]
-  labs      labs[]
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  employees   employees[]
+  labs        labs[]
 
   @@index([code])
   @@index([isActive])
 }
 
-// ============= SPECIALIZATIONS =============
-
 model specializations {
-  id          String   @id @default(ulid())
-  name        String   @unique
-  code        String   @unique
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id                      String                     @id @default(ulid())
+  name                    String                     @unique
+  code                    String                     @unique
+  description             String?                    @db.Text
+  isActive                Boolean                    @default(true)
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
   employeeSpecializations employee_specializations[]
 
   @@index([code])
   @@index([isActive])
 }
 
-// ============= EMPLOYEES (Doctors, Nurses, Staff, etc.) =============
-
 model employees {
-  id            String  @id @default(ulid())
-  userId        String  @unique
-  departmentId  String? // One department per employee
-  bio           String? @db.Text
-  qualification String? @db.Text
-  experiences   Json? // Array of {company, designation, startDate, endDate, description}
-  certificates  Json? // Array of certificate objects
-  documents     Json? // File uploads metadata
-
-  // Doctor/Medical Staff specific
-  consultationFee Float?
-  hospitalFee     Float?  @default(0)
-  isAvailable     Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  id                      String                     @id @default(ulid())
+  userId                  String                     @unique
+  departmentId            String?
+  bio                     String?                    @db.Text
+  qualification           String?                    @db.Text
+  experiences             Json?
+  certificates            Json?
+  documents               Json?
+  consultationFee         Float?
+  hospitalFee             Float?                     @default(0)
+  isAvailable             Boolean                    @default(true)
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
   user                    users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   department              departments?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   employeeSpecializations employee_specializations[]
   doctorAppointments      appointments[]             @relation("DoctorAppointments")
-  assignedAppointments    appointments[]             @relation("AssignedAppointments")
   prescriptions           prescriptions[]
-  testResults             test_results[]             @relation("Technician")
-  reviewedTests           test_results[]             @relation("Reviewer")
-  orderedTests            test_orders[]              @relation("OrderedBy")
-  receivedPayments        payments[]
-  appointmentEvents       appointment_events[]       @relation("PerformedBy")
 
   @@index([userId])
   @@index([departmentId])
   @@index([isAvailable])
 }
 
-// ============= JUNCTION TABLES =============
-
-// Many-to-many: Employees <-> Specializations
 model employee_specializations {
-  id               String   @id @default(ulid())
+  id               String          @id @default(ulid())
   employeeId       String
   specializationId String
-  createdAt        DateTime @default(now())
-
-  employee       employees       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  specialization specializations @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  employee         employees       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  specialization   specializations @relation(fields: [specializationId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, specializationId])
   @@index([employeeId])
   @@index([specializationId])
 }
 
-// ============= PATIENTS =============
-
 model patients {
-  id         String      @id @default(ulid())
-  patientId  String      @unique
-  name       String
-  age        Int
-  phone      String
-  gender     Gender?
-  address    String?
-  bloodGroup BloodGroup?
-  email      String?
-  notes      String?
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  appointments appointments[]
-  documents    documents[]
-  bills        bills[]
+  id              String         @id @default(ulid())
+  patientId       String         @unique
+  name            String
+  age             Int
+  phone           String
+  gender          Gender?
+  address         String?
+  bloodGroup      BloodGroup?
+  email           String?
+  notes           String?
+  isActive        Boolean        @default(true)
+  initiatedBy     String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  initiatedByUser users          @relation("InitiatedPatients", fields: [initiatedBy], references: [id])
+  appointments    appointments[]
+  documents       documents[]
+  bills           bills[]
 
   @@index([patientId])
   @@index([phone])
   @@index([name])
   @@index([isActive])
-  @@index([createdAt]) // For recent patients
+  @@index([createdAt])
+  @@index([initiatedBy])
 }
-
-// ============= APPOINTMENTS =============
 
 model appointments {
   id               String            @id @default(ulid())
   patientId        String
-  doctorId         String // References employees.id
-  assignedBy       String // References employees.id
+  doctorId         String
   appointmentType  AppointmentType
   chiefComplaint   String?           @db.Text
   diagnosis        String?           @db.Text
@@ -388,108 +306,86 @@ model appointments {
   entryTime        DateTime?
   exitTime         DateTime?
   appointmentDate  DateTime          @default(now())
-  appointmentMonth String // YYYY-MM for partitioning/archiving
+  appointmentMonth String
+  initiatedBy      String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  patient          patients          @relation(fields: [patientId], references: [id])
+  doctor           employees         @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  initiatedByUser  users             @relation("InitiatedAppointments", fields: [initiatedBy], references: [id])
+  bills            bills[]
+  prescriptions    prescriptions[]
+  testOrders       test_orders[]
 
-  patient            patients             @relation(fields: [patientId], references: [id])
-  doctor             employees            @relation("DoctorAppointments", fields: [doctorId], references: [id])
-  assignedByEmployee employees            @relation("AssignedAppointments", fields: [assignedBy], references: [id])
-  bills              bills[]
-  prescriptions      prescriptions[]
-  testOrders         test_orders[]
-  appointmentEvents  appointment_events[]
-
-  @@unique([doctorId, appointmentDate, serialNumber]) // Prevent duplicate serial numbers
-  @@unique([doctorId, appointmentDate, queuePosition]) // Prevent duplicate queue positions
-  @@index([doctorId, appointmentDate, queuePosition]) // Queue management
-  @@index([patientId, appointmentDate]) // Patient history
-  @@index([status, appointmentDate]) // Today's waiting/in-consultation
-  @@index([appointmentDate]) // Daily operations
-  @@index([appointmentMonth]) // Monthly partitioning
-  @@index([createdAt]) // Recent appointments
-  @@index([status]) // Status filtering (all WAITING appointments)
-  @@index([doctorId, status]) // Doctor's appointments by status
+  @@unique([doctorId, appointmentDate, serialNumber])
+  @@unique([doctorId, appointmentDate, queuePosition])
+  @@index([doctorId, appointmentDate, queuePosition])
+  @@index([patientId, appointmentDate])
+  @@index([status, appointmentDate])
+  @@index([appointmentDate])
+  @@index([appointmentMonth])
+  @@index([createdAt])
+  @@index([status])
+  @@index([doctorId, status])
+  @@index([initiatedBy])
 }
-
-// ============= APPOINTMENT EVENTS (Event Sourcing Pattern) =============
-
-model appointment_events {
-  id            String               @id @default(ulid())
-  appointmentId String
-  eventType     AppointmentEventType
-  description   String?
-  metadata      Json? // Flexible data: billId, testId, fileUrl, duration, etc.
-  performedBy   String? // References employees.id
-  performedAt   DateTime             @default(now())
-  createdAt     DateTime             @default(now())
-
-  appointment         appointments @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  performedByEmployee employees?   @relation("PerformedBy", fields: [performedBy], references: [id])
-
-  @@index([appointmentId, performedAt]) // Timeline reconstruction
-  @@index([eventType]) // Event type filtering
-  @@index([performedAt]) // Chronological queries
-  @@index([appointmentId, eventType]) // Specific event lookup
-}
-
-// ============= BILLING (Polymorphic-like Design) =============
 
 model bills {
-  id            String     @id @default(ulid())
-  billNumber    String     @unique
-  patientId     String
-  appointmentId String?
-  billableType  String? // "appointment", "test", "medicine", "other" - flexible for future
-  billableId    String? // ID of the billable entity
-  totalAmount   Float
-  paidAmount    Float      @default(0)
-  dueAmount     Float
-  discount      Float      @default(0)
-  status        BillStatus @default(PENDING)
-  billingDate   DateTime   @default(now())
-  dueDate       DateTime?
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  patient     patients      @relation(fields: [patientId], references: [id])
-  appointment appointments? @relation(fields: [appointmentId], references: [id])
-  billItems   bill_items[]
-  payments    payments[]
+  id              String        @id @default(ulid())
+  billNumber      String        @unique
+  patientId       String
+  appointmentId   String?
+  billableType    String?
+  billableId      String?
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  dueAmount       Float
+  discount        Float         @default(0)
+  status          BillStatus    @default(PENDING)
+  billingDate     DateTime      @default(now())
+  dueDate         DateTime?
+  notes           String?
+  initiatedBy     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  patient         patients      @relation(fields: [patientId], references: [id])
+  appointment     appointments? @relation(fields: [appointmentId], references: [id])
+  initiatedByUser users         @relation("InitiatedBills", fields: [initiatedBy], references: [id])
+  billItems       bill_items[]
+  payments        payments[]
 
   @@index([billNumber])
-  @@index([patientId, status]) // Patient's pending bills
+  @@index([patientId, status])
   @@index([appointmentId])
-  @@index([status, billingDate]) // Pending bills by date
-  @@index([billableType, billableId]) // Polymorphic lookup
-  @@index([billingDate]) // Daily billing reports
-  @@index([createdAt]) // Recent bills
-  @@index([dueAmount]) // Overdue bills filtering
-  @@index([status, dueAmount]) // Complex overdue queries
+  @@index([status, billingDate])
+  @@index([billableType, billableId])
+  @@index([billingDate])
+  @@index([createdAt])
+  @@index([dueAmount])
+  @@index([status, dueAmount])
+  @@index([initiatedBy])
 }
 
 model bill_items {
   id           String  @id @default(ulid())
   billId       String
-  itemableType String // "consultation", "test", "medicine", "service" - polymorphic
-  itemableId   String // ID of the item (test_order.id, medicine.id, etc.)
+  itemableType String
+  itemableId   String
   itemName     String
   quantity     Int     @default(1)
   unitPrice    Float
   discount     Float   @default(0)
   total        Float
   notes        String?
-
-  bill bills @relation(fields: [billId], references: [id], onDelete: Cascade)
+  bill         bills   @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@index([billId])
-  @@index([itemableType, itemableId]) // Polymorphic lookup
+  @@index([itemableType, itemableId])
 }
 
 model payment_methods {
   id        String   @id @default(ulid())
-  name      String   @unique // CASH, BKASH, NAGAD, ROCKET, UPAY, CARD, BANK_TRANSFER
+  name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -498,109 +394,102 @@ model payment_methods {
 }
 
 model payments {
-  id            String   @id @default(ulid())
-  billId        String
-  amount        Float
-  paymentMethod String // References payment_methods.name
-  transactionId String?
-  receivedBy    String? // References employees.id
-  status        String   @default("success")
-  paymentDate   DateTime @default(now())
-  notes         String?
-  metadata      Json?
-
-  bill               bills         @relation(fields: [billId], references: [id])
-  receivedByEmployee employees?    @relation(fields: [receivedBy], references: [id])
-  transaction        transactions?
+  id              String        @id @default(ulid())
+  billId          String
+  amount          Float
+  paymentMethod   String
+  transactionId   String?
+  initiatedBy     String
+  status          String        @default("success")
+  paymentDate     DateTime      @default(now())
+  notes           String?
+  metadata        Json?
+  bill            bills         @relation(fields: [billId], references: [id])
+  initiatedByUser users         @relation("InitiatedPayments", fields: [initiatedBy], references: [id])
+  transaction     transactions?
 
   @@index([billId])
   @@index([paymentMethod])
   @@index([status])
-  @@index([paymentDate]) // Daily payment reports
-  @@index([receivedBy])
+  @@index([paymentDate])
+  @@index([initiatedBy])
 }
 
-// ============= MEDICINES & PRESCRIPTIONS =============
-
 model medicines {
-  id           String   @id @default(ulid())
-  name         String
-  genericName  String?
-  type         String?
-  manufacturer String?
-  strength     String?
-  price        Float?
-  stock        Int?
-  minStock     Int?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
+  id                String               @id @default(ulid())
+  name              String
+  genericName       String?
+  type              String?
+  manufacturer      String?
+  strength          String?
+  price             Float?
+  stock             Int?
+  minStock          Int?
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   prescriptionItems prescription_items[]
 
   @@index([name])
   @@index([isActive])
-  @@index([stock]) // Low stock alerts
+  @@index([stock])
 }
 
 model medicine_instructions {
-  id          String  @id @default(ulid())
-  name        String  @unique
-  description String?
-  isActive    Boolean @default(true)
-
+  id                String               @id @default(ulid())
+  name              String               @unique
+  description       String?
+  isActive          Boolean              @default(true)
   prescriptionItems prescription_items[]
 
   @@index([isActive])
 }
 
 model prescriptions {
-  id            String    @id @default(ulid())
-  appointmentId String    @unique // One prescription per appointment
-  doctorId      String // References employees.id
-  notes         String?
-  followUpDate  DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  appointment appointments         @relation(fields: [appointmentId], references: [id])
-  doctor      employees            @relation(fields: [doctorId], references: [id])
-  items       prescription_items[]
+  id              String               @id @default(ulid())
+  appointmentId   String               @unique
+  doctorId        String
+  notes           String?
+  followUpDate    DateTime?
+  initiatedBy     String
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  appointment     appointments         @relation(fields: [appointmentId], references: [id])
+  doctor          employees            @relation(fields: [doctorId], references: [id])
+  initiatedByUser users                @relation("InitiatedPrescriptions", fields: [initiatedBy], references: [id])
+  items           prescription_items[]
 
   @@index([doctorId])
   @@index([createdAt])
+  @@index([initiatedBy])
 }
 
 model prescription_items {
-  id             String  @id @default(ulid())
+  id             String                 @id @default(ulid())
   prescriptionId String
   medicineId     String
   instructionId  String?
   duration       String?
   notes          String?
-
-  prescription prescriptions          @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medicine     medicines              @relation(fields: [medicineId], references: [id])
-  instruction  medicine_instructions? @relation(fields: [instructionId], references: [id])
+  prescription   prescriptions          @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicine       medicines              @relation(fields: [medicineId], references: [id])
+  instruction    medicine_instructions? @relation(fields: [instructionId], references: [id])
 
   @@index([prescriptionId])
   @@index([medicineId])
 }
 
-// ============= LABS & TESTS =============
-
 model labs {
-  id           String   @id @default(ulid())
-  name         String   @unique
-  code         String   @unique
+  id           String       @id @default(ulid())
+  name         String       @unique
+  code         String       @unique
   departmentId String?
   description  String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  department departments? @relation(fields: [departmentId], references: [id])
-  testTypes  test_types[]
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  department   departments? @relation(fields: [departmentId], references: [id])
+  testTypes    test_types[]
 
   @@index([code])
   @@index([isActive])
@@ -608,20 +497,19 @@ model labs {
 }
 
 model test_types {
-  id          String   @id @default(ulid())
+  id          String          @id @default(ulid())
   name        String
   labId       String?
-  code        String   @unique
+  code        String          @unique
   price       Float
   templateId  String?
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  lab        labs?           @relation(fields: [labId], references: [id])
-  template   test_templates? @relation(fields: [templateId], references: [id])
-  testOrders test_orders[]
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  lab         labs?           @relation(fields: [labId], references: [id])
+  template    test_templates? @relation(fields: [templateId], references: [id])
+  testOrders  test_orders[]
 
   @@index([code])
   @@index([labId])
@@ -629,77 +517,74 @@ model test_types {
 }
 
 model test_templates {
-  id          String   @id @default(ulid())
-  name        String   @unique
+  id          String       @id @default(ulid())
+  name        String       @unique
   description String?
-  fields      Json // Form builder JSON schema
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  testTypes test_types[]
+  fields      Json
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  testTypes   test_types[]
 
   @@index([isActive])
 }
 
 model test_orders {
-  id            String     @id @default(ulid())
-  appointmentId String
-  testTypeId    String
-  orderedBy     String // References employees.id
-  status        TestStatus @default(ORDERED)
-  priority      String     @default("normal") // "normal", "urgent", "stat"
-  orderedAt     DateTime   @default(now())
-  billId        String?
-
-  appointment       appointments  @relation(fields: [appointmentId], references: [id])
-  testType          test_types    @relation(fields: [testTypeId], references: [id])
-  orderedByEmployee employees     @relation("OrderedBy", fields: [orderedBy], references: [id])
-  result            test_results?
+  id              String        @id @default(ulid())
+  appointmentId   String
+  testTypeId      String
+  initiatedBy     String
+  status          TestStatus    @default(ORDERED)
+  priority        String        @default("normal")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  billId          String?
+  appointment     appointments  @relation(fields: [appointmentId], references: [id])
+  testType        test_types    @relation(fields: [testTypeId], references: [id])
+  initiatedByUser users         @relation("InitiatedTestOrders", fields: [initiatedBy], references: [id])
+  result          test_results?
 
   @@index([appointmentId])
-  @@index([testTypeId, status]) // Lab queue
-  @@index([status, orderedAt]) // Workflow status
-  @@index([orderedAt]) // Recent orders
-  @@index([orderedBy])
-  @@index([priority]) // Urgent tests first
+  @@index([testTypeId, status])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([initiatedBy])
+  @@index([priority])
 }
 
 model test_results {
-  id           String     @id @default(ulid())
-  testOrderId  String     @unique
-  technicianId String // References employees.id
-  resultData   Json // Dynamic form data
-  status       TestStatus @default(IN_PROGRESS)
-  reviewedBy   String? // References employees.id
-  reviewNotes  String?
-  completedAt  DateTime?
-  releasedAt   DateTime?
-  deliveredAt  DateTime?
-  deliveredTo  String?
+  id              String      @id @default(ulid())
+  testOrderId     String      @unique
+  initiatedBy     String
+  resultData      Json
+  status          TestStatus  @default(IN_PROGRESS)
+  reviewedBy      String?
+  reviewNotes     String?
+  completedAt     DateTime?
+  releasedAt      DateTime?
+  deliveredAt     DateTime?
+  deliveredTo     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  testOrder       test_orders @relation(fields: [testOrderId], references: [id])
+  initiatedByUser users       @relation("InitiatedTestResults", fields: [initiatedBy], references: [id])
+  reviewedByUser  users?      @relation("ReviewedTestResults", fields: [reviewedBy], references: [id])
 
-  testOrder  test_orders @relation(fields: [testOrderId], references: [id])
-  technician employees   @relation("Technician", fields: [technicianId], references: [id])
-  reviewer   employees?  @relation("Reviewer", fields: [reviewedBy], references: [id])
-
-  @@index([status, completedAt]) // Pending review
-  @@index([technicianId])
+  @@index([status, completedAt])
+  @@index([initiatedBy])
   @@index([reviewedBy])
 }
 
-// ============= DOCUMENTS =============
-
 model documents {
-  id            String   @id @default(ulid())
-  patientId     String
-  appointmentId String?
-  fileType      String // "xray", "scan", "report", "prescription"
-  fileName      String
-  fileUrl       String
-  fileSize      Int?
-  uploadedBy    String
-  uploadedAt    DateTime @default(now())
-
+  id             String   @id @default(ulid())
+  patientId      String
+  appointmentId  String?
+  fileType       String
+  fileName       String
+  fileUrl        String
+  fileSize       Int?
+  uploadedBy     String
+  uploadedAt     DateTime @default(now())
   patient        patients @relation(fields: [patientId], references: [id])
   uploadedByUser users    @relation(fields: [uploadedBy], references: [id])
 
@@ -708,8 +593,6 @@ model documents {
   @@index([fileType])
   @@index([uploadedAt])
 }
-
-// ============= NOTIFICATIONS =============
 
 model notifications {
   id        String           @id @default(ulid())
@@ -720,24 +603,20 @@ model notifications {
   data      Json?
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
+  user      users            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isRead, createdAt]) // Unread notifications
+  @@index([userId, isRead, createdAt])
   @@index([createdAt])
 }
 
-// ============= LEDGER ACCOUNTS =============
-
 model ledger_accounts {
-  id          String   @id @default(ulid())
-  name        String
-  accountType String // "cash", "bank", "revenue", "expense" - flexible
-  balance     Float    @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id           String         @id @default(ulid())
+  name         String
+  accountType  String
+  balance      Float          @default(0)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   transactions transactions[]
 
   @@index([accountType])
@@ -745,32 +624,29 @@ model ledger_accounts {
 }
 
 model transactions {
-  id            String   @id @default(ulid())
+  id            String          @id @default(ulid())
   accountId     String
-  paymentId     String?  @unique
+  paymentId     String?         @unique
   amount        Float
-  type          String // "CREDIT", "DEBIT"
-  referenceType String? // "bill", "expense", "transfer" - flexible
+  type          String
+  referenceType String?
   referenceId   String?
   description   String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime        @default(now())
+  account       ledger_accounts @relation(fields: [accountId], references: [id])
+  payment       payments?       @relation(fields: [paymentId], references: [id])
 
-  account ledger_accounts @relation(fields: [accountId], references: [id])
-  payment payments?       @relation(fields: [paymentId], references: [id])
-
-  @@index([accountId, createdAt]) // Account statement
-  @@index([createdAt]) // Daily transactions
-  @@index([referenceType, referenceId]) // Lookup by reference
+  @@index([accountId, createdAt])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
 }
-
-// ============= SETTINGS =============
 
 model settings {
   id        String   @id @default(ulid())
   key       String   @unique
-  value     String // Store JSON or encrypted values
-  type      String   @default("string") // "string", "number", "boolean", "json"
-  isPublic  Boolean  @default(false) // Can be accessed by frontend
+  value     String
+  type      String   @default("string")
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -778,26 +654,24 @@ model settings {
   @@index([isPublic])
 }
 
-// ============= AUDIT LOG (For compliance & debugging) =============
-
 model audit_logs {
   id        String   @id @default(ulid())
-  userId    String?
-  action    String // "create", "update", "delete", "login", etc.
-  entity    String // "patient", "visit", "bill", etc.
+  userId    String
+  action    String
+  entity    String
   entityId  String?
-  changes   Json? // Before/after data
+  changes   Json?
+  metadata  Json?
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
+  user      users    @relation("AuditLogs", fields: [userId], references: [id])
 
   @@index([userId, createdAt])
   @@index([entity, entityId])
-  @@index([createdAt]) // Archiving old logs
+  @@index([createdAt])
   @@index([action])
 }
-
-// ============= LEGACY (Keep for now) =============
 
 model categories {
   id          String   @id @default(ulid())

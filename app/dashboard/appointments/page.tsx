@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { client } from "@/lib/orpc";
 import { format } from "date-fns";
-import { Route } from "next";
 import { redirect } from "next/navigation";
 import { AppointmentsTable } from "./_components/appointments-table";
 
@@ -14,7 +13,7 @@ export default async function AppointmentsPage(props: {
 }) {
   const session = await getSession();
   if (!session) {
-    redirect("/login" as Route);
+    redirect("/auth/sign-in");
   }
 
   const searchParams = await props.searchParams;

@@ -1,10 +1,13 @@
-import prisma from "@/lib/prisma";
 import { getPaginationQuery } from "@/lib/pagination";
+import prisma from "@/lib/prisma";
 import { paginationSchema } from "@/schema/paginationSchema";
-import { createPatientSchema, updatePatientSchema } from "@/schema/patientSchema";
-import { os } from "@orpc/server";
+import {
+  createPatientSchema,
+  updatePatientSchema,
+} from "@/schema/patientSchema";
 import { object, string } from "yup";
-import { Prisma, Gender, BloodGroup } from "../prisma/generated/client";
+import { BloodGroup, Gender, Prisma } from "../prisma/generated/client";
+import { os, protectedOS } from "./context";
 
 // Helper function to generate next patient ID with database-level locking
 // Format: PID25-000001 (PID + Year + 6-digit sequential)
@@ -53,8 +56,8 @@ export const getPatients = os
         gender: string().optional(),
         bloodGroup: string().optional(),
         isActive: string().optional(), // "true" | "false" | "all"
-      })
-    )
+      }),
+    ),
   )
   .handler(async ({ input }) => {
     const { skip, take } = getPaginationQuery(input);
@@ -144,14 +147,14 @@ export const getPatient = os
   });
 
 // Create patient
-export const createPatient = os
+export const createPatient = protectedOS
   .route({
     method: "POST",
     path: "/patients",
     summary: "Create a new patient",
   })
   .input(createPatientSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     // Check if patient with same phone already exists
     const existing = await prisma.patients.findFirst({
       where: { phone: input.phone },
@@ -176,6 +179,7 @@ export const createPatient = os
         address: input.address || null,
         notes: input.notes || null,
         isActive: input.isActive ?? true,
+        initiatedBy: context.user.id,
       },
     });
 
@@ -192,7 +196,7 @@ export const updatePatient = os
   .input(
     object({
       id: string().required(),
-    }).concat(updatePatientSchema)
+    }).concat(updatePatientSchema),
   )
   .handler(async ({ input }) => {
     const { id, ...data } = input;
@@ -256,11 +260,13 @@ export const deletePatient = os
 
     // Check if patient has any associations
     const totalAssociations =
-      patient._count.appointments + patient._count.bills + patient._count.documents;
+      patient._count.appointments +
+      patient._count.bills +
+      patient._count.documents;
 
     if (totalAssociations > 0) {
       throw new Error(
-        `Cannot delete patient. Patient has ${totalAssociations} associated records (appointments, bills, or documents). Please remove them first or deactivate the patient instead.`
+        `Cannot delete patient. Patient has ${totalAssociations} associated records (appointments, bills, or documents). Please remove them first or deactivate the patient instead.`,
       );
     }
 

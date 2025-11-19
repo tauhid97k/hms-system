@@ -1,11 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import prisma from "./prisma";
 import { headers } from "next/headers";
+import prisma from "./prisma";
 
 export const auth = betterAuth({
-  trustedOrigins: ["http://localhost:3001"],
+  trustedOrigins: ["http://localhost:3001", "http://localhost:3001"],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
@@ -32,13 +32,13 @@ export const auth = betterAuth({
     },
   },
   account: {
-    modelName: "accounts"
+    modelName: "accounts",
   },
   session: {
-    modelName: "sessions"
+    modelName: "sessions",
   },
   verification: {
-    modelName: "verifications"
+    modelName: "verifications",
   },
   plugins: [nextCookies()],
 });

@@ -11,7 +11,6 @@ async function main() {
   console.log("🗑️  Clearing existing data...");
 
   // Clear in correct order (respecting foreign keys)
-  await prisma.appointment_events.deleteMany();
   await prisma.prescription_items.deleteMany();
   await prisma.prescriptions.deleteMany();
   await prisma.test_results.deleteMany();
@@ -557,6 +556,7 @@ async function main() {
       email: "alice@email.com",
       address: "123 Main St, City",
       notes: "Regular patient with hypertension",
+      initiatedBy: adminUser.id, // Audit: Admin registered patient
       isActive: true,
     },
   });
@@ -572,6 +572,7 @@ async function main() {
       email: "bob@email.com",
       address: "456 Oak Ave, City",
       notes: "Athlete, previous knee injury",
+      initiatedBy: adminUser.id, // Audit: Admin registered patient
       isActive: true,
     },
   });
@@ -587,6 +588,7 @@ async function main() {
       email: "carol.parent@email.com",
       address: "789 Pine Rd, City",
       notes: "Mild allergies to peanuts",
+      initiatedBy: adminUser.id,
       isActive: true,
     },
   });
@@ -602,6 +604,7 @@ async function main() {
       email: "david@email.com",
       address: "321 Elm St, City",
       notes: "Diabetic patient, regular check-ups",
+      initiatedBy: adminUser.id,
       isActive: true,
     },
   });
@@ -616,6 +619,7 @@ async function main() {
       bloodGroup: BloodGroup.O_NEGATIVE,
       email: "eva@email.com",
       address: "654 Maple Dr, City",
+      initiatedBy: adminUser.id,
       isActive: true,
     },
   });
@@ -889,11 +893,11 @@ async function main() {
           Math.floor(Math.random() * appointmentTypeOptions.length)
         ];
 
-      await prisma.appointments.create({
+      const appointment = await prisma.appointments.create({
         data: {
           patientId: patient.id,
           doctorId: doctor.id,
-          assignedBy: assignerEmployee.id, // Use employee ID, not user ID
+          initiatedBy: assignerEmployee.userId, // Audit: User who created
           appointmentType: appointmentType as "NEW" | "FOLLOWUP",
           chiefComplaint: "Regular checkup",
           diagnosis: null,
@@ -904,8 +908,95 @@ async function main() {
           status: status as "WAITING" | "IN_CONSULTATION" | "COMPLETED",
         },
       });
+
+      // Create bill for this appointment
+      const consultationFee = doctor.consultationFee || 500;
+      const hospitalFee = doctor.hospitalFee || 100;
+      const totalAmount = consultationFee + hospitalFee;
+
+      // Determine bill status based on appointment status
+      let billStatus: "PENDING" | "PARTIAL" | "PAID" = "PENDING";
+      let paidAmount = 0;
+
+      if (status === "COMPLETED") {
+        // 70% chance of being fully paid, 20% partial, 10% pending
+        const rand = Math.random();
+        if (rand < 0.7) {
+          billStatus = "PAID";
+          paidAmount = totalAmount;
+        } else if (rand < 0.9) {
+          billStatus = "PARTIAL";
+          paidAmount = Math.floor(totalAmount * 0.5); // 50% paid
+        }
+      } else if (status === "IN_CONSULTATION") {
+        // 50% chance of being partially paid
+        if (Math.random() < 0.5) {
+          billStatus = "PARTIAL";
+          paidAmount = Math.floor(totalAmount * 0.5);
+        }
+      }
+
+      const dueAmount = totalAmount - paidAmount;
+
+      const bill = await prisma.bills.create({
+        data: {
+          billNumber: `BILL-${format(appointmentDate, "yyyyMMdd")}-${serialCounter.toString().padStart(4, "0")}`,
+          patientId: patient.id,
+          appointmentId: appointment.id,
+          billableType: "appointment",
+          billableId: appointment.id,
+          totalAmount,
+          paidAmount,
+          dueAmount,
+          status: billStatus,
+          billingDate: appointmentDate,
+          initiatedBy: assignerEmployee.userId, // Audit: User who created bill
+          billItems: {
+            create: [
+              {
+                itemableType: "consultation",
+                itemableId: appointment.id,
+                itemName: "Consultation Fee",
+                quantity: 1,
+                unitPrice: consultationFee,
+                total: consultationFee,
+              },
+              {
+                itemableType: "service",
+                itemableId: appointment.id,
+                itemName: "Hospital Fee",
+                quantity: 1,
+                unitPrice: hospitalFee,
+                total: hospitalFee,
+              },
+            ],
+          },
+        },
+      });
+
+      // Create payment records if bill is paid/partial
+      if (paidAmount > 0) {
+        const paymentMethods = await prisma.payment_methods.findMany({
+          where: { isActive: true },
+        });
+        const randomPaymentMethod =
+          paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+
+        await prisma.payments.create({
+          data: {
+            billId: bill.id,
+            amount: paidAmount,
+            paymentMethod: randomPaymentMethod.name,
+            initiatedBy: assignerEmployee.userId,
+            status: "success",
+            paymentDate: appointmentDate,
+          },
+        });
+      }
     }
   }
+
+  console.log("💰 Created bills for all appointments");
 
   console.log("✅ Seeding completed successfully!");
   console.log("\n📋 Login Credentials:");

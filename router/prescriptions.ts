@@ -2,19 +2,19 @@ import { getPaginationQuery } from "@/lib/pagination";
 import prisma from "@/lib/prisma";
 import { paginationSchema } from "@/schema/paginationSchema";
 import { createPrescriptionSchema } from "@/schema/prescriptionSchema";
-import { os } from "@orpc/server";
 import { object, string } from "yup";
 import { Prisma } from "../prisma/generated/client";
+import { os, protectedOS } from "./context";
 
 // Create prescription
-export const createPrescription = os
+export const createPrescription = protectedOS
   .route({
     method: "POST",
     path: "/prescriptions",
     summary: "Create a new prescription",
   })
   .input(createPrescriptionSchema)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     // Check if appointment exists
     const appointment = await prisma.appointments.findUnique({
       where: { id: input.appointmentId },
@@ -47,6 +47,7 @@ export const createPrescription = os
           doctorId: input.doctorId,
           notes: input.notes,
           followUpDate: input.followUpDate,
+          initiatedBy: context.user.id,
         },
       });
 
@@ -62,19 +63,6 @@ export const createPrescription = os
           })),
         });
       }
-
-      // Create appointment event
-      await tx.appointment_events.create({
-        data: {
-          appointmentId: input.appointmentId,
-          eventType: "PRESCRIPTION_GIVEN",
-          performedBy: input.doctorId,
-          metadata: {
-            prescriptionId: newPrescription.id,
-            medicineCount: input.items?.length || 0,
-          },
-        },
-      });
 
       // Return prescription with items
       return tx.prescriptions.findUnique({

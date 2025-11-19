@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,7 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -17,14 +24,26 @@ import {
 } from "@/components/ui/select";
 import Spinner from "@/components/ui/spinner";
 import { client } from "@/lib/orpc";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { createSafeClient } from "@orpc/client";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LuCheck, LuPrinter } from "react-icons/lu";
+import { Controller, useForm } from "react-hook-form";
+import { LuCheck } from "react-icons/lu";
 import { toast } from "sonner";
+import { object, string } from "yup";
 
 const safeClient = createSafeClient(client);
+
+// Payment schema
+const paymentSchema = object({
+  paymentMethod: string().required("Payment method is required"),
+});
+
+type PaymentFormData = {
+  paymentMethod: string;
+};
 
 type PaymentMethod = {
   id: string;
@@ -37,6 +56,7 @@ type BillItem = {
   itemName: string;
   quantity: number;
   unitPrice: number;
+  discount: number;
   total: number;
 };
 
@@ -45,10 +65,9 @@ type Payment = {
   amount: number;
   paymentMethod: string;
   paymentDate: Date | string;
-  receivedByEmployee?: {
-    user: {
-      name: string;
-    };
+  status: string;
+  initiatedByUser?: {
+    name: string;
   };
 };
 
@@ -60,26 +79,30 @@ type BillWithDetails = {
   dueAmount: number;
   status: string;
   patient: {
+    id: string;
     name: string;
     patientId: string;
+    phone: string;
   };
   appointment?: {
+    id: string;
     serialNumber: number;
     queuePosition: number;
     appointmentDate: Date | string;
+    status: string;
     doctor: {
+      id: string;
       user: {
         name: string;
       };
     };
-  };
+  } | null;
   billItems: BillItem[];
   payments: Payment[];
 };
 
 type InvoiceModalProps = {
   appointmentId: string;
-  currentEmployeeId: string;
   paymentMethods: PaymentMethod[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,37 +110,49 @@ type InvoiceModalProps = {
 
 export function InvoiceModal({
   appointmentId,
-  currentEmployeeId,
   paymentMethods,
   open,
   onOpenChange,
 }: InvoiceModalProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [billData, setBillData] = useState<BillWithDetails | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("");
+
+  // Payment form with react-hook-form
+  const paymentForm = useForm<PaymentFormData>({
+    resolver: yupResolver(paymentSchema),
+    defaultValues: {
+      paymentMethod: "Cash",
+    },
+  });
 
   const handleOpen = async () => {
     if (!appointmentId) return;
 
     setIsLoading(true);
     try {
-      // Fetch appointment to get bill ID
-      const appointment = await client.appointments.getOne({
-        id: appointmentId,
-      });
+      // Fetch appointment bills to get bill ID
+      const { data: bills, error: billsError } =
+        await safeClient.appointments.getBills(appointmentId);
 
-      if (!appointment.bills || appointment.bills.length === 0) {
+      if (billsError || !bills || bills.length === 0) {
         toast.error("No bill found for this appointment");
         handleClose();
         return;
       }
 
-      const billId = appointment.bills[0].id;
-      const bill = await client.bills.getWithPayments({ id: billId });
+      const billId = bills[0].id;
+      const { data: bill, error: billError } =
+        await safeClient.bills.getWithPayments({ id: billId });
+
+      if (billError || !bill) {
+        toast.error("Failed to load invoice data");
+        handleClose();
+        return;
+      }
+
       setBillData(bill as BillWithDetails);
-    } catch (error) {
+    } catch {
       toast.error("Failed to load invoice data");
       handleClose();
     } finally {
@@ -127,7 +162,7 @@ export function InvoiceModal({
 
   const handleClose = () => {
     setBillData(null);
-    setPaymentMethod("");
+    paymentForm.reset();
     onOpenChange(false);
   };
 
@@ -136,24 +171,15 @@ export function InvoiceModal({
     handleOpen();
   }
 
-  const handleConfirmPayment = async () => {
+  // Handle payment form submission
+  const onSubmitPayment = async (data: PaymentFormData) => {
     if (!billData) return;
-
-    if (!paymentMethod) {
-      toast.error("Please select a payment method");
-      return;
-    }
-
-    setIsSubmitting(true);
 
     const { error } = await safeClient.payments.create({
       billId: billData.id,
       amount: billData.dueAmount,
-      paymentMethod,
-      receivedBy: currentEmployeeId,
+      paymentMethod: data.paymentMethod,
     });
-
-    setIsSubmitting(false);
 
     if (error) {
       toast.error(error.message || "Failed to process payment");
@@ -164,19 +190,20 @@ export function InvoiceModal({
     }
   };
 
-  const handlePrint = () => {
-    toast.info("Print functionality coming soon!");
-  };
-
   const isPaid = billData?.status === "PAID";
-  const hasDue = billData?.dueAmount > 0;
+  const hasDue = (billData?.dueAmount ?? 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {billData ? `Invoice #${billData.billNumber}` : "Invoice"}
+          <DialogTitle className="flex items-center gap-2">
+            <span>Invoice</span>
+            {billData && (
+              <Badge variant="secondary" className="text-sm font-normal">
+                #{billData.billNumber}
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -186,13 +213,15 @@ export function InvoiceModal({
           </div>
         ) : !billData ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-destructive">No invoice data available</div>
+            <div className="text-destructive-foreground">
+              No invoice data available
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
             {/* Bill Information */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">📋 Bill Information</h3>
+              <h3 className="text-sm font-semibold">Bill Information</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Patient:</span>
@@ -233,7 +262,23 @@ export function InvoiceModal({
 
             {/* Bill Details */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">💰 Bill Details</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Bill Details</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge
+                    variant={
+                      billData.status === "PAID"
+                        ? "success"
+                        : billData.status === "PARTIAL"
+                          ? "warning"
+                          : "destructive"
+                    }
+                  >
+                    {billData.status}
+                  </Badge>
+                </div>
+              </div>
               <div className="overflow-hidden rounded-lg border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
@@ -245,7 +290,7 @@ export function InvoiceModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {billData.billItems.map((item: any) => (
+                    {billData.billItems.map((item) => (
                       <tr key={item.id} className="border-t">
                         <td className="p-3">{item.itemName}</td>
                         <td className="p-3 text-right">{item.quantity}</td>
@@ -286,111 +331,105 @@ export function InvoiceModal({
                   </tfoot>
                 </table>
               </div>
-
-              {/* Bill Status Badge */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Bill Status:
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    billData.status === "PAID"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : billData.status === "PARTIAL"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        : "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                  }`}
-                >
-                  {billData.status}
-                </span>
-              </div>
             </div>
 
-            {/* Payment History */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">💳 Payment History</h3>
-              {billData.payments && billData.payments.length > 0 ? (
-                <div className="space-y-2">
-                  {billData.payments.map((payment: any) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                    >
-                      <div>
-                        <div className="font-medium">
-                          {format(new Date(payment.paymentDate), "PPP p")} - ৳
-                          {payment.amount.toFixed(2)} ({payment.paymentMethod})
-                        </div>
-                        {payment.receivedByEmployee && (
-                          <div className="text-xs text-muted-foreground">
-                            Received by: {payment.receivedByEmployee.user.name}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-lg border p-3 text-sm text-muted-foreground">
-                  No payments yet
-                </div>
-              )}
-            </div>
-
-            {/* Payment Form (only show if there's due amount) */}
-            {hasDue && (
-              <div className="space-y-3 border-t pt-6">
-                <h3 className="text-sm font-semibold">💵 Confirm Payment</h3>
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <div className="mb-4 flex items-center justify-between">
+            {/* Paid Status Display */}
+            {isPaid && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="success" className="text-base">
+                      PAID
+                    </Badge>
                     <span className="text-sm text-muted-foreground">
-                      Amount to Pay:
-                    </span>
-                    <span className="text-lg font-bold">
-                      ৳{billData.dueAmount.toFixed(2)}
+                      Payment Completed
                     </span>
                   </div>
-                  <Field>
-                    <FieldLabel>
-                      Payment Method <span className="text-destructive">*</span>
-                    </FieldLabel>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={setPaymentMethod}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {paymentMethods.map((method) => (
-                          <SelectItem key={method.id} value={method.name}>
-                            {method.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">
+                      Total Paid
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      ৳{billData.totalAmount.toFixed(2)}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 border-t pt-6">
-              <Button variant="outline" onClick={handleClose}>
-                Close
-              </Button>
-              {isPaid ? (
-                <Button onClick={handlePrint}>
-                  <LuPrinter className="mr-2 h-4 w-4" />
-                  Print Invoice
-                </Button>
-              ) : (
-                <Button onClick={handleConfirmPayment} isLoading={isSubmitting}>
-                  <LuCheck className="mr-2 h-4 w-4" />
-                  Confirm Payment
-                </Button>
-              )}
-            </div>
+            {/* Payment Form and Actions (only show if there's due amount) */}
+            {hasDue && (
+              <form
+                onSubmit={paymentForm.handleSubmit(onSubmitPayment)}
+                className="space-y-4"
+              >
+                <FieldSet disabled={paymentForm.formState.isSubmitting}>
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Confirm Payment</h3>
+                    <div className="rounded-lg border bg-muted/50 p-4">
+                      <div className="mb-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Amount to Pay:
+                        </span>
+                        <span className="text-lg font-bold">
+                          ৳{billData.dueAmount.toFixed(2)}
+                        </span>
+                      </div>
+                      <FieldGroup>
+                        <Controller
+                          name="paymentMethod"
+                          control={paymentForm.control}
+                          render={({ field, fieldState }) => (
+                            <Field data-invalid={fieldState.invalid}>
+                              <FieldLabel htmlFor="paymentMethod">
+                                Payment Method{" "}
+                                <span className="text-destructive">*</span>
+                              </FieldLabel>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select payment method" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {paymentMethods.map((method) => (
+                                    <SelectItem
+                                      key={method.id}
+                                      value={method.name}
+                                    >
+                                      {method.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FieldError errors={[fieldState.error]} />
+                            </Field>
+                          )}
+                        />
+                      </FieldGroup>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClose}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      type="submit"
+                      isLoading={paymentForm.formState.isSubmitting}
+                    >
+                      <LuCheck />
+                      <span>Confirm Payment</span>
+                    </Button>
+                  </div>
+                </FieldSet>
+              </form>
+            )}
           </div>
         )}
       </DialogContent>

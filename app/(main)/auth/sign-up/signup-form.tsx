@@ -129,7 +129,12 @@ const SignUpForm = () => {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <Input {...field} id="password" placeholder="password" />
+                    <Input
+                      type="password"
+                      {...field}
+                      id="password"
+                      placeholder="password"
+                    />
                     <FieldError errors={[fieldState.error]} />
                   </Field>
                 )}

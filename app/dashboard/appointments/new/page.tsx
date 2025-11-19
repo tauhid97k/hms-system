@@ -97,11 +97,7 @@ export default async function NewAppointmentPage() {
         </p>
       </div>
 
-      <NewAppointmentForm
-        patients={patients}
-        doctors={doctors}
-        currentEmployeeId={employeeId}
-      />
+      <NewAppointmentForm patients={patients} doctors={doctors} />
     </div>
   );
 }

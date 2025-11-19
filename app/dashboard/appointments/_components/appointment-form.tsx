@@ -26,7 +26,6 @@ type CreateAppointmentFormData = InferType<typeof createAppointmentSchema>;
 type AppointmentFormProps = {
   patients: Patient[];
   doctors: Doctor[];
-  currentEmployeeId: string;
   onSubmit: (
     data: CreateAppointmentFormData,
     shouldPrint?: boolean,
@@ -38,7 +37,6 @@ type AppointmentFormProps = {
 export function AppointmentForm({
   patients,
   doctors,
-  currentEmployeeId,
   onSubmit,
   onCancel,
   isLoading,
@@ -48,7 +46,6 @@ export function AppointmentForm({
     defaultValues: {
       patientId: "",
       doctorId: "",
-      assignedBy: currentEmployeeId,
       appointmentType: "NEW",
       chiefComplaint: null,
     },
@@ -62,7 +59,6 @@ export function AppointmentForm({
     form.reset({
       patientId: "",
       doctorId: "",
-      assignedBy: currentEmployeeId,
       appointmentType: "NEW",
       chiefComplaint: null,
     });

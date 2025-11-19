@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { os } from "@orpc/server";
-import { string, number, object } from "yup";
-import { Prisma, BillStatus } from "../prisma/generated/client";
+import { number, object, string } from "yup";
+import { BillStatus, Prisma } from "../prisma/generated/client";
 
 // Get all bills with pagination and filters
 export const getBills = os
@@ -20,7 +20,7 @@ export const getBills = os
         .optional(),
       billableType: string().optional(),
       search: string().optional(),
-    })
+    }),
   )
   .handler(async ({ input }) => {
     const { page, limit, patientId, status, billableType, search } = input;
@@ -135,13 +135,9 @@ export const getBill = os
         billItems: true,
         payments: {
           include: {
-            receivedByEmployee: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
+            initiatedByUser: {
+              select: {
+                name: true,
               },
             },
           },
@@ -169,7 +165,7 @@ export const updateBillStatus = os
       status: string()
         .oneOf(["PENDING", "PARTIAL", "PAID", "REFUNDED", "CANCELLED"])
         .required(),
-    })
+    }),
   )
   .handler(async ({ input }) => {
     const bill = await prisma.bills.update({

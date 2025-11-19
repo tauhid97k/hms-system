@@ -83,7 +83,6 @@ export function DoctorQueueDetail({
     const { error } = await safeClient.appointments.updateStatus({
       id: appointmentId,
       status: status as any,
-      performedBy: employeeId,
     });
 
     if (error) {
@@ -105,7 +104,6 @@ export function DoctorQueueDetail({
 
     const { error } = await safeClient.appointments.callNextPatient({
       doctorId: doctor.id,
-      performedBy: employeeId,
     });
 
     if (error) {

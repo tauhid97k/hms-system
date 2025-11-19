@@ -4,7 +4,6 @@ import { number, object, string } from "yup";
 export const createAppointmentSchema = object({
   patientId: string().required("Patient is required"),
   doctorId: string().required("Doctor is required"),
-  assignedBy: string().required("Assigned by is required"),
   appointmentType: string()
     .oneOf(["NEW", "FOLLOWUP"], "Invalid appointment type")
     .required("Appointment type is required"),
@@ -25,7 +24,6 @@ export const createAppointmentWithNewPatientSchema = object({
     .required("Gender is required"),
   // Appointment fields
   doctorId: string().required("Doctor is required"),
-  assignedBy: string().required("Assigned by is required"),
   appointmentType: string()
     .oneOf(["NEW", "FOLLOWUP"], "Invalid appointment type")
     .required("Appointment type is required"),
@@ -54,11 +52,9 @@ export const updateAppointmentStatusSchema = object({
       "Invalid status",
     )
     .required("Status is required"),
-  performedBy: string().required("Performed by is required"),
 });
 
 // Call Next Patient Schema
 export const callNextPatientSchema = object({
   doctorId: string().required("Doctor ID is required"),
-  performedBy: string().required("Performed by is required"),
 });
