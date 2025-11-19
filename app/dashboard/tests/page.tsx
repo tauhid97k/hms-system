@@ -13,10 +13,10 @@ const TestsPage = async ({ searchParams }: { searchParams: SearchParams }) => {
 
   const [tests, labs] = await Promise.all([
     client.tests.getAll({ page, limit, search, isActive, labId }),
-    client.labs.getAll(),
+    client.labs.getAll({ page: 1, limit: 100 }),
   ]);
 
-  return <TestsTable tests={tests} labs={labs} />;
+  return <TestsTable tests={tests} labs={labs.data} />;
 };
 
 export default TestsPage;

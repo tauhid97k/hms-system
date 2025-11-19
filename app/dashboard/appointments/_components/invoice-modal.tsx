@@ -23,6 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Spinner from "@/components/ui/spinner";
+import type {
+  BillWithDetails,
+  PaymentMethod,
+} from "@/lib/dataTypes";
 import { client } from "@/lib/orpc";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { createSafeClient } from "@orpc/client";
@@ -43,62 +47,6 @@ const paymentSchema = object({
 
 type PaymentFormData = {
   paymentMethod: string;
-};
-
-type PaymentMethod = {
-  id: string;
-  name: string;
-  isActive: boolean;
-};
-
-type BillItem = {
-  id: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  total: number;
-};
-
-type Payment = {
-  id: string;
-  amount: number;
-  paymentMethod: string;
-  paymentDate: Date | string;
-  status: string;
-  initiatedByUser?: {
-    name: string;
-  };
-};
-
-type BillWithDetails = {
-  id: string;
-  billNumber: string;
-  totalAmount: number;
-  paidAmount: number;
-  dueAmount: number;
-  status: string;
-  patient: {
-    id: string;
-    name: string;
-    patientId: string;
-    phone: string;
-  };
-  appointment?: {
-    id: string;
-    serialNumber: number;
-    queuePosition: number;
-    appointmentDate: Date | string;
-    status: string;
-    doctor: {
-      id: string;
-      user: {
-        name: string;
-      };
-    };
-  } | null;
-  billItems: BillItem[];
-  payments: Payment[];
 };
 
 type InvoiceModalProps = {

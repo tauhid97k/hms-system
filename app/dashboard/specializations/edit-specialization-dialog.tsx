@@ -43,7 +43,7 @@ export function EditSpecializationDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<UpdateSpecializationFormData>({
-    resolver: yupResolver(updateSpecializationSchema) as any,
+    resolver: yupResolver(updateSpecializationSchema),
     defaultValues: {
       name: specialization.name,
       code: specialization.code,
@@ -71,11 +71,11 @@ export function EditSpecializationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Specialization</DialogTitle>
           <DialogDescription>
-            Update specialization information. Required fields are marked with *.
+            Update specialization information.
           </DialogDescription>
         </DialogHeader>
 

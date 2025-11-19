@@ -28,9 +28,15 @@ import {
   toggleDoctorAvailability,
   updateDoctor,
 } from "./doctors";
-import { getLabs } from "./labs";
+import { createLab, deleteLab, getLab, getLabs, updateLab } from "./labs";
 import { getMedicineInstructions } from "./medicineInstructions";
-import { getMedicine, getMedicines } from "./medicines";
+import {
+  createMedicine,
+  deleteMedicine,
+  getMedicine,
+  getMedicines,
+  updateMedicine,
+} from "./medicines";
 import {
   createPatient,
   deletePatient,
@@ -125,6 +131,9 @@ export const router = {
   medicines: {
     getAll: getMedicines,
     getOne: getMedicine,
+    create: createMedicine,
+    update: updateMedicine,
+    delete: deleteMedicine,
   },
   medicineInstructions: {
     getAll: getMedicineInstructions,
@@ -143,5 +152,9 @@ export const router = {
   },
   labs: {
     getAll: getLabs,
+    getOne: getLab,
+    create: createLab,
+    update: updateLab,
+    delete: deleteLab,
   },
 };

@@ -6,6 +6,7 @@ import {
   LuGraduationCap,
   LuLayoutGrid,
   LuList,
+  LuPill,
   LuReceipt,
   LuSettings,
   LuStethoscope,
@@ -84,12 +85,24 @@ export const menuList: MenuItem[] = [
   },
   {
     id: 10,
+    title: "Medicines",
+    icon: <LuPill className="icon" />,
+    url: "/dashboard/medicines",
+  },
+  {
+    id: 11,
+    title: "Labs",
+    icon: <LuFlaskConical className="icon" />,
+    url: "/dashboard/labs",
+  },
+  {
+    id: 12,
     title: "Categories",
     icon: <LuList className="icon" />,
     url: "/dashboard/categories",
   },
   {
-    id: 11,
+    id: 13,
     title: "Settings",
     icon: <LuSettings className="icon" />,
     url: "/dashboard/settings",

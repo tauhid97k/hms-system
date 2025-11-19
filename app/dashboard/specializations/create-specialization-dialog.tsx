@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -12,20 +10,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
 import { client } from "@/lib/orpc";
-import { createSafeClient } from "@orpc/client";
 import { createSpecializationSchema } from "@/schema/specializationSchema";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { createSafeClient } from "@orpc/client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import type { InferType } from "yup";
 
 const safeClient = createSafeClient(client);
 
-type CreateSpecializationFormData = InferType<typeof createSpecializationSchema>;
+type CreateSpecializationFormData = InferType<
+  typeof createSpecializationSchema
+>;
 
 type CreateSpecializationDialogProps = {
   open: boolean;
@@ -40,7 +42,7 @@ export function CreateSpecializationDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<CreateSpecializationFormData>({
-    resolver: yupResolver(createSpecializationSchema) as any,
+    resolver: yupResolver(createSpecializationSchema),
     defaultValues: {
       name: "",
       code: "",
@@ -66,11 +68,11 @@ export function CreateSpecializationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Specialization</DialogTitle>
           <DialogDescription>
-            Add a new medical specialization. Required fields are marked with *.
+            Add a new medical specialization.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,7 +100,11 @@ export function CreateSpecializationDialog({
                   <FieldLabel>
                     Code <span className="text-destructive">*</span>
                   </FieldLabel>
-                  <Input {...field} placeholder="e.g., CARDIO" className="uppercase" />
+                  <Input
+                    {...field}
+                    placeholder="e.g., CARDIO"
+                    className="uppercase"
+                  />
                   <FieldError errors={[fieldState.error]} />
                 </Field>
               )}
@@ -132,7 +138,10 @@ export function CreateSpecializationDialog({
                       onCheckedChange={field.onChange}
                       id="isActive"
                     />
-                    <FieldLabel htmlFor="isActive" className="!mb-0 cursor-pointer">
+                    <FieldLabel
+                      htmlFor="isActive"
+                      className="!mb-0 cursor-pointer"
+                    >
                       Active
                     </FieldLabel>
                   </div>

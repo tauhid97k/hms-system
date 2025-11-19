@@ -119,6 +119,66 @@ export type Employee = {
 // Doctor (alias for Employee for backward compatibility)
 export type Doctor = Employee;
 
+// Payment Method
+export type PaymentMethod = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
+// Bill Item
+export type BillItem = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+};
+
+// Payment
+export type Payment = {
+  id: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: Date | string;
+  status: string;
+  initiatedByUser?: {
+    name: string;
+  };
+};
+
+// Bill with Details (for invoice modal)
+export type BillWithDetails = {
+  id: string;
+  billNumber: string;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  status: string;
+  patient: {
+    id: string;
+    name: string;
+    patientId: string;
+    phone: string;
+  };
+  appointment?: {
+    id: string;
+    serialNumber: number;
+    queuePosition: number;
+    appointmentDate: Date | string;
+    status: string;
+    doctor: {
+      id: string;
+      user: {
+        name: string;
+      };
+    };
+  } | null;
+  billItems: BillItem[];
+  payments: Payment[];
+};
+
 // Bill
 export type Bill = {
   id: string;

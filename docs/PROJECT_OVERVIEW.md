@@ -1,778 +1,521 @@
-# 🏥 Hospital Management System (HMS) - Complete Documentation
+# 🏥 Hospital Management System - Project Overview
 
-**Version:** 2.0  
-**Last Updated:** November 17, 2025  
-**Tech Stack:** Next.js 15, Prisma, PostgreSQL, oRPC, TypeScript, Redis
+**Last Updated:** November 20, 2025  
+**Status:** ✅ Production Ready
 
 ---
 
 ## 📋 Table of Contents
 
-1. [System Overview](#system-overview)
-2. [Architecture](#architecture)
-3. [Database Design](#database-design)
-4. [Patient Journey Flow](#patient-journey-flow)
-5. [Key Features](#key-features)
-6. [Technical Implementation](#technical-implementation)
-7. [Real-Time Queue System](#real-time-queue-system)
-8. [Security & Compliance](#security--compliance)
+1. [Project Description](#project-description)
+2. [Tech Stack](#tech-stack)
+3. [Architecture](#architecture)
+4. [Key Features](#key-features)
+5. [Database Schema](#database-schema)
+6. [API Structure](#api-structure)
+7. [Authentication & Authorization](#authentication--authorization)
+8. [Audit Trail System](#audit-trail-system)
+9. [Development Setup](#development-setup)
+10. [Project Structure](#project-structure)
 
 ---
 
-## 🎯 System Overview
+## 🎯 Project Description
 
-### Purpose
+A comprehensive Hospital Management System built with Next.js 16, featuring:
 
-A comprehensive Hospital Management System designed to handle the complete patient journey from registration through consultation, prescriptions, lab tests, billing, and reporting.
+- Patient management
+- Appointment scheduling
+- Queue management
+- Prescription management
+- Billing & payments
+- Test orders & results
+- Medicine inventory
+- Audit trail logging
 
-### Capacity
+---
 
-- **Daily Patients:** 1000+
-- **Concurrent Users:** 100+
-- **Data Retention:** Years of historical data
-- **Real-time Updates:** Queue management via SSE
+## 🛠️ Tech Stack
 
-### Core Modules
+### **Frontend:**
 
-1. **Patient Management** - Registration, records, history
-2. **Appointment System** - Scheduling, queue management
-3. **Consultation** - Doctor-patient interaction, prescriptions
-4. **Laboratory** - Test orders, results, reports
-5. **Billing** - Flexible billing for any service
-6. **Pharmacy** - Medicine inventory, prescriptions
-7. **Reports & Analytics** - Comprehensive reporting
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **UI Components:** Custom component library
+- **Forms:** React Hook Form + Yup validation
+- **State Management:** React Query (TanStack Query)
+- **Icons:** Lucide React
+
+### **Backend:**
+
+- **API:** oRPC (Type-safe RPC framework)
+- **Database:** PostgreSQL
+- **ORM:** Prisma 6.19
+- **Authentication:** NextAuth.js
+- **Session:** Database sessions
+
+### **Development:**
+
+- **Package Manager:** npm
+- **Linting:** ESLint
+- **Formatting:** Prettier
+- **Type Checking:** TypeScript strict mode
 
 ---
 
 ## 🏗️ Architecture
 
-### Technology Stack
+### **Application Structure:**
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Frontend Layer                       │
-│  Next.js 15 (App Router) + React + TypeScript          │
-│  TailwindCSS + shadcn/ui + Radix UI                     │
-└─────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────┐
-│                      API Layer                           │
-│  oRPC (Type-safe RPC) + Server Actions                  │
-│  Server-Sent Events (SSE) for real-time updates         │
-└─────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────┐
-│                   Business Logic                         │
-│  Routers (departments, patients, appointments, etc.)     │
-│  Validation (Yup → migrating to Zod v4)                │
-└─────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────┐
-│                   Data Layer                             │
-│  Prisma ORM + PostgreSQL                                │
-│  Redis (Queue state, caching, pub/sub)                  │
-└─────────────────────────────────────────────────────────┘
+HMS (Next.js App)
+├── Frontend (React Components)
+│   ├── Pages (App Router)
+│   ├── Components (Reusable UI)
+│   └── Client Components (Interactive)
+│
+├── Backend (oRPC Routers)
+│   ├── Protected Routes (Auth required)
+│   ├── Public Routes (No auth)
+│   └── Context Middleware (Session handling)
+│
+└── Database (PostgreSQL + Prisma)
+    ├── Schema (Data models)
+    ├── Migrations (Version control)
+    └── Seed Data (Initial data)
 ```
 
-### Design Patterns
-
-1. **Server-Side Rendering (SSR)**
-   - All data fetching on server
-   - Props passed to client components
-   - Better performance and SEO
-
-2. **Type-Safe RPC (oRPC)**
-   - End-to-end type safety
-   - No REST boilerplate
-   - Automatic validation
-
-3. **Event Sourcing (Audit Logging)**
-   - Immutable event log
-   - Complete audit trail
-   - Timeline reconstruction
-
-4. **Polymorphic Relations**
-   - Flexible billing system
-   - Future-proof design
-   - No schema changes for new types
-
----
-
-## 💾 Database Design
-
-### Overview
-
-- **Total Models:** 27
-- **Total Indexes:** 70+
-- **Database:** PostgreSQL
-- **ORM:** Prisma
-- **ID Strategy:** ULID (time-sortable)
-
-### Core Models
-
-#### 1. Users & Authentication
-
-```prisma
-users
-├── sessions (JWT tokens)
-├── accounts (OAuth providers)
-├── user_roles (many-to-many)
-└── employees (extended profile)
-```
-
-#### 2. RBAC System
-
-```prisma
-roles
-├── role_permissions (many-to-many)
-└── user_roles (many-to-many)
-
-permissions
-└── role_permissions
-```
-
-**Benefits:**
-
-- ✅ Unlimited custom roles
-- ✅ Users can have multiple roles
-- ✅ Granular permissions per module
-- ✅ No schema changes for new roles
-
-#### 3. Patient Management
-
-```prisma
-patients
-├── appointments
-├── bills
-└── documents
-```
-
-**Fields:**
-
-- `patientId` - Unique patient identifier (e.g., P-2024-0001)
-- `name`, `age`, `gender`, `phone`, `email`
-- `bloodGroup`, `address`, `notes`
-- `isActive` - Soft delete support
-
-#### 4. Appointments & Queue
-
-```prisma
-appointments
-├── patient (relation)
-├── doctor (employee relation)
-├── assignedByEmployee (relation)
-├── bills
-├── prescriptions
-├── testOrders
-└── appointmentEvents (audit log)
-```
-
-**Key Fields:**
-
-- `serialNumber` - Daily serial (1, 2, 3...)
-- `queuePosition` - Current position in queue
-- `status` - WAITING | IN_CONSULTATION | COMPLETED | CANCELLED
-- `appointmentType` - NEW | FOLLOWUP
-- `appointmentMonth` - YYYY-MM (for partitioning)
-
-**Unique Constraints:**
-
-```prisma
-@@unique([doctorId, appointmentDate, serialNumber])
-@@unique([doctorId, appointmentDate, queuePosition])
-```
-
-#### 5. Event Sourcing (Audit Log)
-
-```prisma
-appointment_events
-├── appointmentId
-├── eventType (34 event types)
-├── description
-├── metadata (JSON)
-├── performedBy (employee)
-└── performedAt (timestamp)
-```
-
-**Event Types:**
-
-- Registration: `APPOINTMENT_REGISTERED`, `APPOINTMENT_ASSIGNED`
-- Queue: `QUEUE_JOINED`, `QUEUE_CALLED`, `QUEUE_SKIPPED`
-- Consultation: `ENTERED_ROOM`, `EXITED_ROOM`, `CONSULTATION_COMPLETED`
-- Clinical: `PRESCRIPTION_GIVEN`, `TESTS_ORDERED`, `REFERRAL_GIVEN`
-- Billing: `CONSULTATION_BILLED`, `PAYMENT_RECEIVED`, `PAYMENT_PARTIAL`
-- Lab: `TEST_SAMPLE_COLLECTED`, `TEST_COMPLETED`, `REPORT_DELIVERED`
-
-#### 6. Billing System (Polymorphic)
-
-```prisma
-bills
-├── billableType (string) - "appointment" | "test" | "medicine" | "any"
-├── billableId (string) - ID of billable entity
-├── billItems (polymorphic items)
-└── payments
-```
-
-**Benefits:**
-
-- ✅ Bill anything without schema changes
-- ✅ Same logic for all types
-- ✅ Future-proof design
-
-#### 7. Prescriptions
-
-```prisma
-prescriptions
-├── appointment (relation)
-├── doctor (relation)
-├── items (prescription_items)
-├── notes
-└── followUpDate
-```
-
-```prisma
-prescription_items
-├── medicine (relation)
-├── instruction (relation)
-├── duration
-└── notes
-```
-
-#### 8. Laboratory
-
-```prisma
-labs
-└── test_types
-    └── test_orders
-        └── test_results
-```
-
-**Workflow:**
-
-1. Doctor orders test → `test_orders` (status: ORDERED)
-2. Sample collected → `test_results` (status: IN_PROGRESS)
-3. Technician completes → (status: COMPLETED)
-4. Doctor reviews → (status: REVIEWED)
-5. Report released → (status: RELEASED)
-6. Patient receives → (status: DELIVERED)
-
-### Indexing Strategy
-
-**Performance Indexes:**
-
-```prisma
-// High-frequency queries
-@@index([doctorId, appointmentDate, queuePosition]) // Queue management
-@@index([status, appointmentDate]) // Today's appointments
-@@index([patientId, appointmentDate]) // Patient history
-@@index([appointmentMonth]) // Monthly partitioning
-
-// Search indexes
-@@index([name]) // Patient search
-@@index([phone]) // Phone lookup
-@@index([email]) // Email lookup
-
-// Status indexes
-@@index([isActive]) // Active records
-@@index([status]) // Status filtering
-```
-
----
-
-## 🔄 Patient Journey Flow
-
-### Complete Workflow
+### **Data Flow:**
 
 ```
-1. REGISTRATION (Reception)
-   ├─→ Patient arrives
-   ├─→ Create/update patient record
-   ├─→ Create appointment
-   ├─→ Assign to doctor
-   ├─→ Generate serial number
-   └─→ Event: APPOINTMENT_REGISTERED
-
-2. QUEUE MANAGEMENT
-   ├─→ Patient joins queue (queuePosition assigned)
-   ├─→ Event: QUEUE_JOINED
-   ├─→ Real-time SSE updates to doctor's screen
-   ├─→ Doctor calls next patient
-   ├─→ Event: QUEUE_CALLED
-   └─→ Status: WAITING → IN_CONSULTATION
-
-3. CONSULTATION (Doctor)
-   ├─→ Patient enters room
-   ├─→ Event: ENTERED_ROOM
-   ├─→ Doctor examines patient
-   ├─→ Records diagnosis
-   ├─→ Prescribes medicines
-   ├─→ Event: PRESCRIPTION_GIVEN
-   ├─→ Orders lab tests (if needed)
-   ├─→ Event: TESTS_ORDERED
-   ├─→ Patient exits
-   ├─→ Event: EXITED_ROOM
-   └─→ Status: IN_CONSULTATION → COMPLETED
-
-4. BILLING (Cashier)
-   ├─→ Create bill (consultation + tests)
-   ├─→ Event: CONSULTATION_BILLED
-   ├─→ Event: TESTS_BILLED
-   ├─→ Patient pays
-   ├─→ Event: PAYMENT_RECEIVED
-   └─→ Generate receipt
-
-5. LABORATORY (if tests ordered)
-   ├─→ Collect sample
-   ├─→ Event: TEST_SAMPLE_COLLECTED
-   ├─→ Process test
-   ├─→ Event: TEST_IN_PROGRESS
-   ├─→ Complete test
-   ├─→ Event: TEST_COMPLETED
-   ├─→ Doctor reviews
-   ├─→ Event: TEST_REVIEWED
-   ├─→ Release report
-   ├─→ Event: REPORT_GENERATED
-   └─→ Deliver to patient
-       └─→ Event: REPORT_DELIVERED
-
-6. PHARMACY (if prescribed)
-   ├─→ Pharmacist views prescription
-   ├─→ Dispenses medicines
-   └─→ Patient receives medicines
-
-7. FOLLOW-UP (if scheduled)
-   ├─→ Event: FOLLOWUP_SCHEDULED
-   ├─→ Reminder sent
-   └─→ Event: FOLLOWUP_REMINDER_SENT
-```
-
-### Timeline Reconstruction
-
-Any appointment's complete journey can be reconstructed:
-
-```typescript
-const events = await prisma.appointment_events.findMany({
-  where: { appointmentId },
-  orderBy: { performedAt: 'asc' },
-  include: { performedByEmployee: { include: { user: true } } }
-});
-
-// Result: Complete timeline with timestamps and performers
+User → UI Component → oRPC Client → Router → Prisma → PostgreSQL
+                                      ↓
+                                  Middleware
+                                  (Auth, Validation)
 ```
 
 ---
 
 ## ✨ Key Features
 
-### 1. Real-Time Queue Management
+### **1. Patient Management**
 
-**Technology:** Server-Sent Events (SSE) + Redis Pub/Sub
+- ✅ Patient registration with unique ID generation
+- ✅ Patient search and filtering
+- ✅ Medical history tracking
+- ✅ Contact information management
 
-**Flow:**
+### **2. Appointment System**
 
-```
-Doctor's Screen
-    ↓
-SSE Connection (/api/queue/stream/:doctorId)
-    ↓
-Redis Subscriber (queue:doctor:${doctorId})
-    ↓
-Real-time Updates (new patient, position changes, status updates)
-```
+- ✅ Appointment scheduling
+- ✅ Serial number & queue position management
+- ✅ Appointment status tracking (WAITING, IN_CONSULTATION, COMPLETED, CANCELLED)
+- ✅ Doctor-wise appointment views
+- ✅ Real-time queue updates
 
-**Features:**
+### **3. Queue Management**
 
-- ✅ Live queue updates
-- ✅ Auto-reconnection with exponential backoff
+- ✅ Real-time queue display
+- ✅ Call next patient functionality
 - ✅ Queue position tracking
-- ✅ Serial number management
-- ✅ Status changes broadcast
+- ✅ Doctor-specific queues
 
-### 2. Flexible Billing
+### **4. Prescription Management**
 
-**Polymorphic Design:**
+- ✅ Digital prescription creation
+- ✅ Medicine selection with instructions
+- ✅ Prescription history per patient
+- ✅ One prescription per appointment rule
+
+### **5. Billing & Payments**
+
+- ✅ Automated bill generation
+- ✅ Multiple payment methods (Cash, bKash, Nagad, Rocket, Upay, Card, Bank Transfer)
+- ✅ Partial payment support
+- ✅ Payment history tracking
+- ✅ Invoice modal with payment confirmation
+- ✅ Bill status management (PENDING, PARTIAL, PAID)
+
+### **6. Test Management**
+
+- ✅ Test order creation
+- ✅ Test result entry
+- ✅ Test status tracking
+- ✅ Lab-wise test organization
+
+### **7. Medicine Inventory**
+
+- ✅ Medicine catalog
+- ✅ Stock management
+- ✅ Medicine instructions library
+- ✅ Pricing information
+
+### **8. Audit Trail**
+
+- ✅ Simplified audit logging with `initiatedBy`
+- ✅ Automatic timestamp tracking
+- ✅ User action tracking
+- ✅ Change history
+
+---
+
+## 🗄️ Database Schema
+
+### **Core Tables:**
+
+#### **Users & Authentication:**
+
+- `users` - User accounts
+- `sessions` - Active sessions
+- `verification_tokens` - Email verification
+
+#### **Organization:**
+
+- `departments` - Hospital departments
+- `specializations` - Doctor specializations
+- `roles` - User roles
+- `employees` - Staff information
+
+#### **Patient Care:**
+
+- `patients` - Patient records
+- `appointments` - Appointment bookings
+- `appointment_events` - Appointment history
+- `prescriptions` - Digital prescriptions
+- `prescription_medicines` - Prescribed medicines
+
+#### **Billing:**
+
+- `bills` - Bill records
+- `bill_items` - Bill line items
+- `payments` - Payment transactions
+- `payment_methods` - Available payment methods
+
+#### **Tests:**
+
+- `tests` - Test catalog
+- `test_orders` - Test orders
+- `test_results` - Test results
+- `labs` - Laboratory information
+
+#### **Inventory:**
+
+- `medicines` - Medicine catalog
+- `medicine_instructions` - Usage instructions
+- `categories` - Medicine categories
+
+### **Audit Pattern:**
+
+All tables include:
+
+```prisma
+initiatedBy String   // User who created/updated
+createdAt   DateTime @default(now())
+updatedAt   DateTime @updatedAt
+```
+
+---
+
+## 🔌 API Structure
+
+### **Router Organization:**
+
+```
+router/
+├── appointments.ts    # Appointment CRUD & queue
+├── patients.ts        # Patient management
+├── bills.ts           # Billing operations
+├── payments.ts        # Payment processing
+├── paymentMethods.ts  # Payment methods
+├── prescriptions.ts   # Prescription management
+├── tests.ts           # Test catalog
+├── medicines.ts       # Medicine inventory
+├── doctors.ts         # Doctor management
+├── departments.ts     # Department management
+├── specializations.ts # Specialization management
+├── context.ts         # Middleware & context
+└── index.ts           # Router exports
+```
+
+### **API Patterns:**
+
+**List Endpoints:**
 
 ```typescript
-// Bill anything
-{
-  billableType: "appointment",
-  billableId: "appointment-123",
-  items: [
-    { itemableType: "consultation", itemableId: "doctor-1", amount: 500 },
-    { itemableType: "test", itemableId: "test-order-1", amount: 1200 },
-    { itemableType: "medicine", itemableId: "med-1", amount: 350 }
-  ]
+GET /patients?page=1&limit=20
+Response: {
+  data: Patient[],
+  meta: { page: 1, limit: 20, total: 100 }
 }
 ```
 
-### 3. Complete Audit Trail
-
-Every action logged:
+**Single Resource:**
 
 ```typescript
-await logEvent({
-  appointmentId,
-  eventType: "PRESCRIPTION_GIVEN",
-  description: "Doctor prescribed 3 medicines",
-  metadata: { prescriptionId, medicineCount: 3 },
-  performedBy: doctorId
+GET /patients/:id
+Response: Patient
+```
+
+**Create:**
+
+```typescript
+POST /patients
+Body: { name, age, phone, ... }
+Response: Patient
+```
+
+**Update:**
+
+```typescript
+PATCH /patients/:id
+Body: { name, age, ... }
+Response: Patient
+```
+
+---
+
+## 🔐 Authentication & Authorization
+
+### **Authentication Flow:**
+
+1. User logs in with credentials
+2. NextAuth.js validates credentials
+3. Session created in database
+4. Session cookie sent to client
+5. Subsequent requests include session cookie
+6. Middleware validates session
+
+### **Authorization Levels:**
+
+- **Public Routes:** No authentication required
+- **Protected Routes:** Requires valid session
+- **Role-Based:** Admin, Doctor, Receptionist, etc.
+
+### **Context Middleware:**
+
+```typescript
+// Automatic session injection
+export const protectedOS = authedOS.use(async ({ context, next }) => {
+  if (!context.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  return next({ context: { user: context.user } });
 });
 ```
 
-### 4. Patient History
+---
 
-Complete medical history accessible:
+## 📝 Audit Trail System
 
-- All appointments
-- All prescriptions
-- All lab tests
-- All bills
-- All documents
-- Complete timeline
+### **Simplified Pattern:**
 
-### 5. Role-Based Access Control
+- **Single Field:** `initiatedBy` (who created/updated)
+- **Automatic Timestamps:** `createdAt`, `updatedAt`
+- **No Redundancy:** Removed `receivedBy`, `updatedBy`, `performedBy`, etc.
 
-```typescript
-// Dynamic permissions
-const canViewPatients = await checkPermission(userId, "patients:view");
-const canCreateBills = await checkPermission(userId, "billing:create");
-const canApproveTests = await checkPermission(userId, "labs:approve");
+### **Special Cases:**
+
+- **Test Results:** `initiatedBy` + `reviewedBy` (different people)
+- **Payments:** `initiatedBy` only (who created payment record)
+
+### **Benefits:**
+
+- ✅ Simpler to understand
+- ✅ Easier to maintain
+- ✅ Consistent across all tables
+- ✅ Clear audit trail
+
+---
+
+## 🚀 Development Setup
+
+### **Prerequisites:**
+
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
+
+### **Installation:**
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd hms-system
+
+# Install dependencies
+npm install
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your database credentials
+
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate dev
+
+# Seed database
+npx prisma db seed
+
+# Start development server
+npm run dev
+```
+
+### **Environment Variables:**
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/hms"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
 ```
 
 ---
 
-## 🔧 Technical Implementation
+## 📁 Project Structure
 
-### Router Pattern
-
-All routers follow consistent pattern:
-
-```typescript
-// router/patients.ts
-import { os } from '@orpc/server';
-import { paginationSchema } from '@/schema/paginationSchema';
-import { z } from 'zod';
-
-export const getPatients = os
-  .route({
-    method: 'GET',
-    path: '/patients',
-    summary: 'Get all patients'
-  })
-  .input(
-    paginationSchema.extend({
-      search: z.string().optional(),
-      isActive: z.enum(['true', 'false', 'all']).optional()
-    })
-  )
-  .handler(async ({ input }) => {
-    const { skip, take, page, limit } = getPaginationQuery(input);
-
-    const [patients, total] = await prisma.$transaction([
-      prisma.patients.findMany({ where, skip, take }),
-      prisma.patients.count({ where })
-    ]);
-
-    return {
-      data: patients,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) }
-    };
-  });
 ```
-
-### Page Pattern (Server Component)
-
-```typescript
-// app/dashboard/patients/page.tsx
-export default async function PatientsPage({ searchParams }) {
-  // Server-side data fetching
-  const patients = await client.patients.getAll({
-    page: Number(searchParams.page) || 1,
-    limit: 20,
-    search: searchParams.search
-  });
-
-  // Pass as props to client component
-  return <PatientsTable initialData={patients} />;
-}
-```
-
-### Client Component Pattern
-
-```typescript
-// _components/patients-table.tsx
-"use client";
-
-import { createSafeClient } from '@orpc/client';
-
-const safeClient = createSafeClient(client);
-
-export function PatientsTable({ initialData }) {
-  const handleDelete = async (id: string) => {
-    const { data, error } = await safeClient.patients.delete(id);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Patient deleted");
-    router.refresh(); // Revalidate server data
-  };
-
-  return <DataTable data={initialData.data} />;
-}
-```
-
-### Modal/Dialog Pattern
-
-```typescript
-// Always render, control with 'open' prop
-export function ParentComponent() {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-
-  return (
-    <>
-      <Button onClick={() => {
-        setSelectedItem(item);
-        setDialogOpen(true);
-      }}>
-        Open
-      </Button>
-
-      {/* Always rendered, not conditionally */}
-      <SomeDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        item={selectedItem}
-      />
-    </>
-  );
-}
+hms-system/
+├── app/                      # Next.js App Router
+│   ├── (main)/              # Public pages
+│   │   └── auth/            # Authentication pages
+│   ├── dashboard/           # Protected dashboard
+│   │   ├── appointments/    # Appointment management
+│   │   ├── patients/        # Patient management
+│   │   ├── queue/           # Queue management
+│   │   ├── prescriptions/   # Prescription management
+│   │   ├── tests/           # Test management
+│   │   └── ...              # Other modules
+│   └── api/                 # API routes
+│
+├── components/              # Reusable components
+│   └── ui/                  # UI components
+│
+├── lib/                     # Utilities & helpers
+│   ├── auth.ts              # Authentication
+│   ├── dataTypes.ts         # Type definitions
+│   ├── orpc.ts              # oRPC client
+│   └── prisma.ts            # Prisma client
+│
+├── prisma/                  # Database
+│   ├── schema.prisma        # Database schema
+│   ├── seed.ts              # Seed data
+│   └── migrations/          # Migration files
+│
+├── router/                  # oRPC routers
+│   ├── appointments.ts      # Appointment routes
+│   ├── patients.ts          # Patient routes
+│   ├── context.ts           # Middleware
+│   └── index.ts             # Router exports
+│
+├── schema/                  # Validation schemas
+│   ├── appointmentSchema.ts
+│   ├── patientSchema.ts
+│   └── ...
+│
+└── docs/                    # Documentation
+    ├── RULES.md             # Development rules
+    ├── PLANS.md             # Implementation plans
+    └── PROJECT_OVERVIEW.md  # This file
 ```
 
 ---
 
-## 🔴 Real-Time Queue System
+## 🎯 Key Design Decisions
 
-### Architecture
+### **1. oRPC over tRPC:**
 
-```
-┌─────────────────┐
-│  Doctor Screen  │
-│  (Client)       │
-└────────┬────────┘
-         │ SSE Connection
-         ↓
-┌─────────────────┐
-│  SSE Endpoint   │
-│  /api/queue/    │
-│  stream/:id     │
-└────────┬────────┘
-         │ Subscribe
-         ↓
-┌─────────────────┐
-│  Redis Pub/Sub  │
-│  queue:doctor:  │
-│  ${doctorId}    │
-└────────┬────────┘
-         │ Publish
-         ↓
-┌─────────────────┐
-│  Queue Updates  │
-│  (Appointments) │
-└─────────────────┘
-```
+- Type-safe API calls
+- Better error handling
+- Simpler setup
+- Built-in middleware support
 
-### Implementation
+### **2. Database Sessions:**
 
-**1. Redis Queue State:**
+- More secure than JWT
+- Better session management
+- Easy to revoke
+- Audit trail support
 
-```typescript
-// Store queue as sorted set (by queuePosition)
-await redis.zadd(
-  `queue:doctor:${doctorId}:${date}`,
-  queuePosition,
-  appointmentId
-);
+### **3. Simplified Audit Trail:**
 
-// Get queue
-const queue = await redis.zrange(
-  `queue:doctor:${doctorId}:${date}`,
-  0,
-  -1,
-  'WITHSCORES'
-);
-```
+- Single `initiatedBy` field
+- Automatic timestamps
+- No redundant fields
+- Clear ownership
 
-**2. SSE Endpoint:**
+### **4. Centralized Types:**
 
-```typescript
-// app/api/queue/stream/[doctorId]/route.ts
-export async function GET(request, { params }) {
-  const stream = new ReadableStream({
-    async start(controller) {
-      const subscriber = redis.duplicate();
-      await subscriber.subscribe(`queue:${params.doctorId}`);
+- All shared types in `lib/dataTypes.ts`
+- Better code reuse
+- Consistent typing
+- Easier maintenance
 
-      subscriber.on('message', (channel, message) => {
-        controller.enqueue(`data: ${message}\n\n`);
-      });
-    }
-  });
+### **5. Context Middleware:**
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
-}
-```
-
-**3. Client Hook:**
-
-```typescript
-// lib/hooks/use-queue-stream.ts
-export function useQueueStream({ doctorId }) {
-  const [queue, setQueue] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    const eventSource = new EventSource(`/api/queue/stream/${doctorId}`);
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setQueue(data);
-    };
-
-    eventSource.onerror = () => {
-      // Exponential backoff reconnection
-    };
-
-    return () => eventSource.close();
-  }, [doctorId]);
-
-  return { queue, isConnected };
-}
-```
+- Automatic session handling
+- Type-safe context
+- No repeated auth code
+- Cleaner routers
 
 ---
 
-## 🔒 Security & Compliance
+## 📊 Current Status
 
-### Authentication
+### **✅ Completed Features:**
 
-- JWT-based sessions
-- OAuth support (Google, etc.)
-- Secure password hashing (bcrypt)
-- Session expiration
+- ✅ Patient management
+- ✅ Appointment scheduling
+- ✅ Queue management
+- ✅ Prescription management
+- ✅ Billing & payments
+- ✅ Invoice modal
+- ✅ Test management
+- ✅ Medicine inventory
+- ✅ Audit trail
+- ✅ Authentication
+- ✅ Authorization
 
-### Authorization
+### **🚧 In Progress:**
 
-- Role-based access control (RBAC)
-- Granular permissions
-- Route protection
-- API endpoint guards
+- Print invoice functionality
+- Payment receipt generation
+- Advanced reporting
+- Analytics dashboard
 
-### Data Protection
+### **📋 Planned:**
 
-- Encrypted sensitive data
-- HIPAA compliance ready
-- Audit logging (all actions tracked)
-- Soft delete (data retention)
-
-### Compliance Features
-
-- Complete audit trail
-- Immutable event log
-- User action tracking
-- Data access logging
-- Retention policies
-
----
-
-## 📊 Performance Optimizations
-
-### Database
-
-- ✅ Strategic indexing (70+ indexes)
-- ✅ Compound indexes for complex queries
-- ✅ Monthly partitioning (`appointmentMonth`)
-- ✅ Connection pooling
-- ✅ Query optimization
-
-### Caching
-
-- ✅ Redis for queue state
-- ✅ Next.js built-in caching
-- ✅ Static data caching
-- ✅ Revalidation strategies
-
-### Real-Time
-
-- ✅ SSE for live updates
-- ✅ Redis Pub/Sub
-- ✅ Efficient queue management
-- ✅ Auto-reconnection
-
-### Frontend
-
-- ✅ Server-side rendering
-- ✅ Optimistic updates
-- ✅ Code splitting
-- ✅ Image optimization
+- Mobile app
+- SMS notifications
+- Email notifications
+- Backup & restore
+- Multi-language support
 
 ---
 
-## 🚀 Scalability
+## 📚 Additional Resources
 
-### Horizontal Scaling
-
-- Stateless API servers
-- Redis for shared state
-- Load balancing ready
-- Session management
-
-### Vertical Scaling
-
-- Efficient queries
-- Proper indexing
-- Connection pooling
-- Resource optimization
-
-### Data Growth
-
-- Monthly partitioning
-- Archive old data
-- Efficient storage
-- Query optimization
+- **Development Rules:** See `docs/RULES.md`
+- **Implementation Plans:** See `docs/PLANS.md`
+- **API Documentation:** Generated from oRPC routers
+- **Database Schema:** See `prisma/schema.prisma`
 
 ---
 
-## 📈 Future Enhancements
+## 🤝 Contributing
 
-### Planned Features
-
-1. **Telemedicine** - Video consultations
-2. **Mobile App** - Patient mobile app
-3. **AI Integration** - Diagnosis assistance
-4. **Analytics Dashboard** - Advanced reporting
-5. **Inventory Management** - Medicine stock tracking
-6. **Insurance Integration** - Claims processing
-7. **Appointment Reminders** - SMS/Email notifications
-8. **Multi-language Support** - Internationalization
-
-### Technical Improvements
-
-1. **Zod v4 Migration** - Replace Yup validation
-2. **Redis Integration** - Full caching layer
-3. **Microservices** - Service separation
-4. **GraphQL** - Alternative API layer
-5. **WebSockets** - Enhanced real-time features
+1. Follow the development rules in `docs/RULES.md`
+2. Write tests for new features
+3. Update documentation
+4. Submit pull request
 
 ---
 
-**End of Documentation**
+## 📄 License
+
+[Your License Here]
+
+---
+
+**For questions or support, contact the development team.**

@@ -21,6 +21,7 @@ import type {
   AppointmentTableRow,
   Doctor,
   PaginatedData,
+  PaymentMethod,
 } from "@/lib/dataTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
@@ -35,12 +36,6 @@ import {
   LuUser,
 } from "react-icons/lu";
 import { InvoiceModal } from "./invoice-modal";
-
-type PaymentMethod = {
-  id: string;
-  name: string;
-  isActive: boolean;
-};
 
 type AppointmentsTableProps = {
   initialData: PaginatedData<AppointmentTableRow>;

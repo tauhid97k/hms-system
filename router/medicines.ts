@@ -1,5 +1,6 @@
 import { getPaginationQuery } from "@/lib/pagination";
 import prisma from "@/lib/prisma";
+import { medicineSchema } from "@/schema/medicineSchema";
 import { paginationSchema } from "@/schema/paginationSchema";
 import { os } from "@orpc/server";
 import { object, string } from "yup";
@@ -93,5 +94,73 @@ export const getMedicine = os
       throw new Error("Medicine not found");
     }
 
+    return medicine;
+  });
+
+// Create medicine
+export const createMedicine = os
+  .route({
+    method: "POST",
+    path: "/medicines",
+    summary: "Create a new medicine",
+  })
+  .input(medicineSchema)
+  .handler(async ({ input }) => {
+    const medicine = await prisma.medicines.create({
+      data: {
+        name: input.name,
+        genericName: input.genericName || null,
+        type: input.type || null,
+        manufacturer: input.manufacturer || null,
+        strength: input.strength || null,
+        price: input.price || null,
+        stock: input.stock || null,
+        minStock: input.minStock || null,
+      },
+    });
+    return medicine;
+  });
+
+// Update medicine
+export const updateMedicine = os
+  .route({
+    method: "PATCH",
+    path: "/medicines/:id",
+    summary: "Update a medicine",
+  })
+  .input(
+    object({
+      id: string().required(),
+    }).concat(medicineSchema),
+  )
+  .handler(async ({ input }) => {
+    const medicine = await prisma.medicines.update({
+      where: { id: input.id },
+      data: {
+        name: input.name,
+        genericName: input.genericName || null,
+        type: input.type || null,
+        manufacturer: input.manufacturer || null,
+        strength: input.strength || null,
+        price: input.price || null,
+        stock: input.stock || null,
+        minStock: input.minStock || null,
+      },
+    });
+    return medicine;
+  });
+
+// Delete medicine
+export const deleteMedicine = os
+  .route({
+    method: "DELETE",
+    path: "/medicines/:id",
+    summary: "Delete a medicine",
+  })
+  .input(string().required())
+  .handler(async ({ input }) => {
+    const medicine = await prisma.medicines.delete({
+      where: { id: input },
+    });
     return medicine;
   });
