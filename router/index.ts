@@ -39,6 +39,8 @@ import {
   getPatients,
   updatePatient,
 } from "./patients";
+import { getPaymentMethods } from "./paymentMethods";
+import { createPayment, getBillWithPayments } from "./payments";
 import {
   createPrescription,
   getPrescriptionByAppointment,
@@ -113,7 +115,14 @@ export const router = {
   bills: {
     getAll: getBills,
     getOne: getBill,
+    getWithPayments: getBillWithPayments,
     updateStatus: updateBillStatus,
+  },
+  payments: {
+    create: createPayment,
+  },
+  paymentMethods: {
+    getAll: getPaymentMethods,
   },
   medicines: {
     getAll: getMedicines,

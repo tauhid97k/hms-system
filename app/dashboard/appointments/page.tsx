@@ -1,5 +1,8 @@
+import { getSession } from "@/lib/auth";
 import { client } from "@/lib/orpc";
 import { format } from "date-fns";
+import { Route } from "next";
+import { redirect } from "next/navigation";
 import { AppointmentsTable } from "./_components/appointments-table";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +12,11 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 export default async function AppointmentsPage(props: {
   searchParams: SearchParams;
 }) {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login" as Route);
+  }
+
   const searchParams = await props.searchParams;
   const page = searchParams.page ? Number(searchParams.page) : 1;
   const limit = searchParams.limit ? Number(searchParams.limit) : 20;
@@ -29,7 +37,7 @@ export default async function AppointmentsPage(props: {
     : format(new Date(), "yyyy-MM-dd");
 
   // Fetch all data in parallel
-  const [doctorsData, appointmentsData] = await Promise.all([
+  const [doctorsData, appointmentsData, paymentMethods] = await Promise.all([
     client.doctors.getAll({
       page: 1,
       limit: 100,
@@ -42,6 +50,7 @@ export default async function AppointmentsPage(props: {
       doctorId,
       appointmentDate,
     }),
+    client.paymentMethods.getAll(),
   ]);
 
   return (
@@ -49,6 +58,8 @@ export default async function AppointmentsPage(props: {
       initialData={appointmentsData}
       currentDate={appointmentDate}
       doctors={doctorsData.data}
+      currentEmployeeId={session.user.id}
+      paymentMethods={paymentMethods}
     />
   );
 }

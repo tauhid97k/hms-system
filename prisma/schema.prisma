@@ -58,13 +58,6 @@ enum TestStatus {
   CANCELLED
 }
 
-enum PaymentMethod {
-  CASH
-  CARD
-  MOBILE_BANKING
-  ONLINE
-}
-
 enum NotificationType {
   APPOINTMENT
   TEST_READY
@@ -494,15 +487,25 @@ model bill_items {
   @@index([itemableType, itemableId]) // Polymorphic lookup
 }
 
+model payment_methods {
+  id        String   @id @default(ulid())
+  name      String   @unique // CASH, BKASH, NAGAD, ROCKET, UPAY, CARD, BANK_TRANSFER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
 model payments {
-  id            String        @id @default(ulid())
+  id            String   @id @default(ulid())
   billId        String
   amount        Float
-  paymentMethod PaymentMethod
+  paymentMethod String // References payment_methods.name
   transactionId String?
   receivedBy    String? // References employees.id
-  status        String        @default("success")
-  paymentDate   DateTime      @default(now())
+  status        String   @default("success")
+  paymentDate   DateTime @default(now())
   notes         String?
   metadata      Json?
 

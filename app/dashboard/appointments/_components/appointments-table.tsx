@@ -26,18 +26,28 @@ import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import {
   LuEllipsisVertical,
+  LuFileText,
   LuPill,
-  LuPrinter,
   LuStethoscope,
   LuUser,
 } from "react-icons/lu";
+import { InvoiceModal } from "./invoice-modal";
+
+type PaymentMethod = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
 
 type AppointmentsTableProps = {
   initialData: PaginatedData<AppointmentTableRow>;
   currentDate: string;
   doctors: Doctor[];
+  currentEmployeeId: string;
+  paymentMethods: PaymentMethod[];
 };
 
 const statusConfig = {
@@ -51,9 +61,13 @@ export function AppointmentsTable({
   initialData,
   currentDate,
   doctors,
+  currentEmployeeId,
+  paymentMethods,
 }: AppointmentsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
 
   const handleStatusChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -202,6 +216,15 @@ export function AppointmentsTable({
                   View Doctor
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedAppointmentId(appointment.id);
+                  setInvoiceModalOpen(true);
+                }}
+              >
+                <LuFileText />
+                Invoice
+              </DropdownMenuItem>
               {appointment.status === "IN_CONSULTATION" && (
                 <DropdownMenuItem asChild>
                   <Link
@@ -214,10 +237,6 @@ export function AppointmentsTable({
                   </Link>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem>
-                <LuPrinter />
-                Print Receipt
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -283,6 +302,14 @@ export function AppointmentsTable({
           onLimitChange={handleLimitChange}
         />
       </div>
+
+      <InvoiceModal
+        appointmentId={selectedAppointmentId}
+        currentEmployeeId={currentEmployeeId}
+        paymentMethods={paymentMethods}
+        open={invoiceModalOpen}
+        onOpenChange={setInvoiceModalOpen}
+      />
     </>
   );
 }

@@ -44,8 +44,24 @@ async function main() {
   await prisma.transactions.deleteMany();
   await prisma.ledger_accounts.deleteMany();
   await prisma.categories.deleteMany();
+  await prisma.payment_methods.deleteMany();
 
-  // 1. Create Departments
+  // 1. Create Payment Methods
+  console.log("💳 Creating payment methods...");
+  const paymentMethods = await prisma.payment_methods.createMany({
+    data: [
+      { name: "Cash" },
+      { name: "bKash" },
+      { name: "Nagad" },
+      { name: "Rocket" },
+      { name: "Upay" },
+      { name: "Card" },
+      { name: "Bank Transfer" },
+    ],
+  });
+  console.log(`✅ Created ${paymentMethods.count} payment methods`);
+
+  // 2. Create Departments
   console.log("🏥 Creating departments...");
   const cardiology = await prisma.departments.create({
     data: {
